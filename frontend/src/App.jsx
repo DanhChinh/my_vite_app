@@ -1,31 +1,45 @@
-// src/App.jsx
+// src/App.jsx (Ví dụ cấu hình Route)
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { CartProvider } from './context/CartContext'; // <-- Import Context
+import { CartProvider } from './context/CartContext';
+import ProtectedRoute from './components/ProtectedRoute';
 
 import Home from './pages/Home';
 import Login from './pages/Login';
-import Cart from './pages/Cart';
-import Checkout from './pages/Checkout';
-import CustomerDashboard from './pages/CustomerDashboard';
 import StaffDashboard from './pages/StaffDashboard';
-import AdminDashboard from './pages/AdminDashboard';
-import ProtectedRoute from './components/ProtectedRoute';
+import AdminDashboard from './pages/AdminDashboard'; // <-- Import trang Admin chính
 
-export default function App() {
+function App() {
   return (
-    <CartProvider> {/* <-- Bọc toàn bộ ứng dụng */}
+    <CartProvider>
       <Router>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
-          <Route path="/cart" element={<Cart />} />
-          <Route path="/checkout" element={<Checkout />} />
-          <Route path="/customer/dashboard" element={<ProtectedRoute allowedRoles={['customer']}><CustomerDashboard /></ProtectedRoute>} />
-          <Route path="/staff/dashboard" element={<ProtectedRoute allowedRoles={['staff']}><StaffDashboard /></ProtectedRoute>} />
-          <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
+
+          {/* Đường dẫn dành cho Nhân viên kho */}
+          <Route 
+            path="/staff" 
+            element={
+              <ProtectedRoute allowedRoles={['staff']}>
+                <StaffDashboard />
+              </ProtectedRoute>
+            } 
+          />
+
+          {/* Đường dẫn dành cho Quản trị viên (Admin) */}
+          <Route 
+            path="/admin" 
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <AdminDashboard />
+              </ProtectedRoute>
+            } 
+          />
         </Routes>
       </Router>
     </CartProvider>
   );
 }
+
+export default App;

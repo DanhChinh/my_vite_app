@@ -16,7 +16,7 @@ const productRoutes = require('./routes/productRoutes');
 const customerRoutes = require('./routes/customerRoutes');
 const orderRoutes = require('./routes/orderRoutes');
 const staffRoutes = require('./routes/staffRoutes');
-
+const adminRoutes = require('./routes/adminRoutes');
 
 // Đăng ký các Endpoint API chính
 app.use('/api', authRoutes);         // API Đăng nhập (/api/login)
@@ -24,7 +24,7 @@ app.use('/api', productRoutes);      // API Danh mục & Sản phẩm (/api/cate
 app.use('/api/customer', customerRoutes); // API Khách hàng bảo mật (/api/customer/profile)
 app.use('/api', orderRoutes)
 app.use('/api', staffRoutes)
-
+app.use('/api/admin', adminRoutes);
 // Route kiểm tra server hoạt động
 app.get('/', (req, res) => {
   res.json({ success: true, message: 'TechStore Pro API đang hoạt động ổn định!' });

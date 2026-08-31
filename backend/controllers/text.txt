@@ -1,0 +1,52 @@
+Đối với quản lý.
+2.4.2.1 Quản lý nhân viên
+Mô tả - Quản lý sẽ tạo cho mỗi nhân viên một tài khoản riêng để đăng nhập vào
+hệ thống và làm công việc của mình.
+- Quản lý có thể thêm sửa xóa các tài khoản khi cần.
+- Quản lý sẽ cấp lại tài khoản cho nhân viên khi nhân viên thông báo quên
+mật khẩu hoặc mất tài khoản.
+Đầu vào Thông tin nhân viên, chức vụ.
+Xử lý - Kiểm tra thông tin:
++ Tên đăng nhập và mật khẩu là kiểu chuỗi không chứa dấu cách.
++ Tên đăng nhập và mật khẩu có độ dài từ 8 đến 16 ký tự.
+Đầu ra Đưa ra thông báo thành công và quản lý sẽ thông báo tài khoản cho nhân
+viên.
+Bảng 2. Đặc tả chức năng quản lý tài khoản
+2.4.2.2 Quản lý đối tác.
+Mô tả - Quản lý sẽ thêm, sửa, xóa thông tin của đối tác
+- Quản lý danh sách đối tác hiện có
+Đầu vào Thông tin đối tác, loại hàng
+Xử lý - Kiểm tra thông tin:
++ Tên đối tác
++ Loại hàng cung cấp (thông tin, chất lượng)
+Đầu ra Danh sách đối tác hiện có (tên đối tác, loại hàng cung cấp, chi tiết thông
+tin đối tác, chi tiết thông tin loại hàng cung cấp)
+Bảng 3. Đặc tả chức năng quản lý đối tác.
+2.4.3 Đối với nhân viên.
+XÂY DỰNG WEBSITE BÁN ĐIỆN THOẠI
+12
+2.4.3.1 Quản lý sản phẩm
+Mô tả - Nhân viên có thể thêm sửa xóa thông tin sản phẩm.
+- Nhân viên có thể tìm kiếm sản phẩm và in danh sách sản phẩm
+Đầu vào Thông tin sản phẩm: Tên, mã hàng, đặc điểm,...
+Xử lý - Kiểm tra thông tin sản phẩm
+- Thay đổi thông tin sản phẩm
+Đầu ra Đưa ra danh sách sản phẩm sau khi thêm, sửa, xóa thông tin sản phẩm
+Bảng 4. Đặc tả chức năng quản lý sản phẩm.
+2.4.3.2 Quản lý hóa đơn
+Mô tả - Nhân viên có thể xem danh sách hóa đơn khi có đơn đặt hàng hoặc đơn
+hàng chưa được giải quyết.
+Đầu vào - Số hóa đơn, tên khách hàng, tên hàng
+Xử lý - Kiểm tra thông tin hóa đơn tương ứng số hóa đơn, thông tin khách hàng
+nhập vào.
+Đầu ra Đưa ra thông tin hóa đơn được yêu cầu
+Bảng 5. Đặc tả chức năng quản lý hóa đơn.
+2.4.3.3 Quản lý khách hàng
+Mô tả - Nhân viên sẽ tìm được thông tin khách hàng đang chờ phê duyệt hóa đơn.
+- Nhân viên có thể quản lý thông tin khách hàng.
+Đầu vào Thông tin khách hàng, trạng thái hóa đơn
+Xử lý - Kiểm tra thông tin:
++ Khách hàng đã tạo hóa đơn hoặc đã mua hàng
++ Hóa đơn trong trạng thái chờ
+Đầu ra - Danh sách khách hàng đang chờ phê duyệt hóa đơn
+- Danh sách khách hàng đã từng mua hàng

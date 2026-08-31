@@ -1,7 +1,7 @@
 // middlewares/authMiddleware.js
 const jwt = require('jsonwebtoken');
 
-const verifyToken = (req, res, next) => {
+exports.verifyToken = (req, res, next) => {
   // Lấy token từ header Authorization (Định dạng: Bearer <token>)
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
@@ -29,4 +29,12 @@ const verifyToken = (req, res, next) => {
   });
 };
 
-module.exports = { verifyToken };
+
+// Kiểm tra xem user có phải là admin không (dùng sau verifyToken)
+exports.verifyAdmin = (req, res, next) => {
+  if (req.user && req.user.role === 'admin') {
+    next();
+  } else {
+    return res.status(403).json({ success: false, message: 'Từ chối truy cập! Yêu cầu quyền Quản trị viên (Admin).' });
+  }
+};
