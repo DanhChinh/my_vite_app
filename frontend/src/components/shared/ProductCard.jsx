@@ -2,6 +2,21 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 
+const parseAttributes = (value) => {
+  if (!value) return {};
+  if (typeof value === 'object') return value;
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === 'object' ? parsed : { Value: value };
+  } catch {
+    return { Value: value };
+  }
+};
+
+const formatAttributeValue = (value) => (
+  typeof value === 'object' ? JSON.stringify(value) : String(value)
+);
+
 export default function ProductCard({ product }) {
   const navigate = useNavigate();
 
@@ -56,9 +71,9 @@ export default function ProductCard({ product }) {
           {/* Hiển thị thông số cấu hình JSON thu gọn */}
           {product.attributes && (
             <div className="text-muted small mb-2">
-              {Object.entries(product.attributes).slice(0, 2).map(([key, val]) => (
+              {Object.entries(parseAttributes(product.attributes)).slice(0, 2).map(([key, val]) => (
                 <span key={key} className="me-1 bg-light px-1 rounded border small">
-                  {val}
+                  {formatAttributeValue(val)}
                 </span>
               ))}
             </div>

@@ -1,21 +1,19 @@
-// src/pages/Login.jsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
-export default function Login() {
+export default function LoginPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
-  // Nếu đã đăng nhập rồi thì điều hướng dựa theo role đã lưu trước đó
   useEffect(() => {
     const token = localStorage.getItem('token');
     const role = localStorage.getItem('role');
     if (token) {
       if (role === 'admin') navigate('/admin');
-      else if (role === 'staff') navigate('/staff/dashboard');
+      else if (role === 'staff') navigate('/staff');
       else navigate('/');
     }
   }, [navigate]);
@@ -31,20 +29,14 @@ export default function Login() {
       });
 
       if (response.data.success && response.data.token) {
-        // Lưu token và role vào localStorage
         localStorage.setItem('token', response.data.token);
         localStorage.setItem('role', response.data.role);
 
         const userRole = response.data.role;
 
-        // ĐIỀU HƯỚNG CHUẨN XÁC THEO TỪNG VAI TRÒ
-        if (userRole === 'admin') {
-          navigate('/admin');
-        } else if (userRole === 'staff') {
-          navigate('/staff/dashboard');
-        } else {
-          navigate('/'); // Khách hàng quay về trang chủ
-        }
+        if (userRole === 'admin') navigate('/admin');
+        else if (userRole === 'staff') navigate('/staff');
+        else navigate('/');
       }
     } catch (err) {
       setError(err.response?.data?.message || 'Đăng nhập thất bại!');
@@ -67,23 +59,22 @@ export default function Login() {
         <form onSubmit={handleLogin}>
           <div className="mb-3">
             <label className="form-label">Tài khoản</label>
-            <input 
-              type="text" 
-              className="form-control" 
-              value={username} 
-              onChange={(e) => setUsername(e.target.value)} 
-            //   onFocus={(e) => e.target.select()}
-              required 
+            <input
+              type="text"
+              className="form-control"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              required
             />
           </div>
           <div className="mb-4">
             <label className="form-label">Mật khẩu</label>
-            <input 
-              type="password" 
-              className="form-control" 
-              value={password} 
-              onChange={(e) => setPassword(e.target.value)} 
-              required 
+            <input
+              type="password"
+              className="form-control"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
             />
           </div>
           <button type="submit" className="btn btn-dark w-100 py-2 fw-bold">Đăng Nhập</button>

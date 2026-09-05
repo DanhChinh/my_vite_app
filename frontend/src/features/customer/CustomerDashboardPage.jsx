@@ -1,16 +1,11 @@
-// src/pages/CustomerDashboard.jsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import Navbar from '../components/shared/Navbar';
+import Navbar from '../../components/shared/Navbar';
 
-export default function CustomerDashboard() {
+export default function CustomerDashboardPage() {
   const navigate = useNavigate();
-  const [customerInfo, setCustomerInfo] = useState({
-    full_name: '',
-    phone: '',
-    address: ''
-  });
+  const [customerInfo, setCustomerInfo] = useState({ full_name: '', phone: '', address: '' });
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -28,11 +23,7 @@ export default function CustomerDashboard() {
         const res = await axios.get('http://localhost:5000/api/customer/profile', {
           headers: { Authorization: `Bearer ${token}` }
         });
-        setCustomerInfo(res.data.data || {
-          full_name: '',
-          phone: '',
-          address: ''
-        });
+        setCustomerInfo(res.data.data || { full_name: '', phone: '', address: '' });
       } catch (err) {
         console.error('Lỗi lấy profile:', err);
       } finally {
@@ -50,11 +41,9 @@ export default function CustomerDashboard() {
   const handleSave = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.put(
-        'http://localhost:5000/api/customer/profile',
-        customerInfo,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const res = await axios.put('http://localhost:5000/api/customer/profile', customerInfo, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
 
       if (res.data.success) {
         alert('Cập nhật thông tin thành công!');

@@ -1,6 +1,7 @@
 // server/server.js
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 require('dotenv').config();
 
 // Khởi tạo ứng dụng Express
@@ -9,20 +10,17 @@ const app = express();
 // Middleware
 app.use(express.json()); // Đọc dữ liệu dạng JSON từ request body
 app.use(cors());         // Cho phép Frontend gọi API cross-origin
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Import các file Routes
-const authRoutes = require('./routes/authRoutes');
-const productRoutes = require('./routes/productRoutes');
+const guestRoutes = require('./routes/guestRoutes');
 const customerRoutes = require('./routes/customerRoutes');
-const orderRoutes = require('./routes/orderRoutes');
 const staffRoutes = require('./routes/staffRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 
 // Đăng ký các Endpoint API chính
-app.use('/api', authRoutes);         // API Đăng nhập (/api/login)
-app.use('/api', productRoutes);      // API Danh mục & Sản phẩm (/api/categories, /api/products)
+app.use('/api', guestRoutes);         // API công khai (/api/public-endpoint)
 app.use('/api/customer', customerRoutes); // API Khách hàng bảo mật (/api/customer/profile)
-app.use('/api', orderRoutes)
 app.use('/api', staffRoutes)
 app.use('/api/admin', adminRoutes);
 // Route kiểm tra server hoạt động

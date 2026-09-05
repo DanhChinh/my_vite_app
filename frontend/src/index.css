@@ -50,20 +50,56 @@
   }
 }
 
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background: #f3f4f6;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
 }
 
 #root {
-  width: 1126px;
+  width: 100%;
+  min-height: 100vh;
+}
+
+img {
   max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
+  display: block;
+}
+
+.card,
+.btn,
+.form-control,
+.list-group-item {
+  transition: all 0.2s ease;
+}
+
+.navbar-brand {
+  letter-spacing: 0.02em;
+}
+
+.list-group-item.active {
+  background-color: #111827;
+  border-color: #111827;
+}
+
+.table th,
+.table td {
+  vertical-align: middle;
 }
 
 h1,

@@ -1,40 +1,62 @@
-// src/App.jsx (Ví dụ cấu hình Route)
+// src/App.jsx (Router chính)
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { CartProvider } from './context/CartContext';
-import ProtectedRoute from './components/ProtectedRoute';
+import ProtectedRoute from './components/common/ProtectedRoute';
 
-import Home from './pages/Home';
-import Login from './pages/Login';
-import StaffDashboard from './pages/StaffDashboard';
-import AdminDashboard from './pages/AdminDashboard'; // <-- Import trang Admin chính
+import HomePage from './features/guest/HomePage';
+import LoginPage from './features/guest/LoginPage';
+import ProductDetailPage from './features/guest/ProductDetailPage';
+import CartPage from './features/customer/CartPage';
+import CheckoutPage from './features/customer/CheckoutPage';
+import CustomerDashboardPage from './features/customer/CustomerDashboardPage';
+import StaffDashboardPage from './features/staff/StaffDashboardPage';
+import AdminDashboardPage from './features/admin/AdminDashboardPage';
 
 function App() {
   return (
     <CartProvider>
       <Router>
         <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/login" element={<Login />} />
+          <Route path="/" element={<HomePage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/products/:productId" element={<ProductDetailPage />} />
+          <Route path="/cart" element={<CartPage />} />
+          <Route path="/checkout" element={<CheckoutPage />} />
 
-          {/* Đường dẫn dành cho Nhân viên kho */}
-          <Route 
-            path="/staff" 
+          <Route
+            path="/customer/dashboard"
             element={
-              <ProtectedRoute allowedRoles={['staff']}>
-                <StaffDashboard />
+              <ProtectedRoute allowedRoles={['customer']}>
+                <CustomerDashboardPage />
               </ProtectedRoute>
-            } 
+            }
           />
 
-          {/* Đường dẫn dành cho Quản trị viên (Admin) */}
-          <Route 
-            path="/admin" 
+          <Route
+            path="/staff"
+            element={
+              <ProtectedRoute allowedRoles={['staff']}>
+                <StaffDashboardPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/staff/dashboard"
+            element={
+              <ProtectedRoute allowedRoles={['staff']}>
+                <StaffDashboardPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/admin"
             element={
               <ProtectedRoute allowedRoles={['admin']}>
-                <AdminDashboard />
+                <AdminDashboardPage />
               </ProtectedRoute>
-            } 
+            }
           />
         </Routes>
       </Router>

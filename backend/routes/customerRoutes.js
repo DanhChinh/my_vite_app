@@ -13,4 +13,10 @@ router.get('/profile', verifyToken, customerController.getProfile);
 // Cập nhật thông tin hồ sơ
 router.put('/profile', verifyToken, customerController.updateProfile);
 
+// Lấy danh sách sản phẩm
+router.get('/products', verifyToken, customerController.getProducts);
+
+// Tạo đơn hàng
+router.post('/orders', verifyToken, customerController.createOrder);
+
 module.exports = router;

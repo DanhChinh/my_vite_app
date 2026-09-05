@@ -1,13 +1,11 @@
-// src/pages/Cart.jsx
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import Navbar from '../components/shared/Navbar';
-import { useCart } from '../context/CartContext';
+import Navbar from '../../components/shared/Navbar';
+import { useCart } from '../../context/CartContext';
 
-export default function Cart() {
+export default function CartPage() {
   const navigate = useNavigate();
   const { cartItems, updateQuantity, removeItem, cartCount } = useCart();
-
   const totalPrice = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
   return (
@@ -52,15 +50,10 @@ export default function Cart() {
                   <span>Tổng tiền:</span>
                   <span>{totalPrice.toLocaleString('vi-VN')} đ</span>
                 </div>
-                <button
-                  className="btn btn-dark w-100 fw-bold py-2"
-                  onClick={() => navigate('/checkout')}
-                >
+                <button className="btn btn-dark w-100 fw-bold py-2" onClick={() => navigate('/checkout')}>
                   Tiến hành đặt hàng
                 </button>
-                <small className="text-muted mt-3 d-block text-center">
-                  {cartCount} sản phẩm trong giỏ hàng
-                </small>
+                <small className="text-muted mt-3 d-block text-center">{cartCount} sản phẩm trong giỏ hàng</small>
               </div>
             </div>
           </div>

@@ -10,9 +10,9 @@ export default function StaffManager() {
     username: '',
     password: '',
     full_name: '',
-    department: '',
-    position: 'Nhân viên',
-    salary: ''
+    phone: '',
+    address: '',
+    position: 'Nhân viên'
   });
 
   const [error, setError] = useState('');
@@ -59,7 +59,7 @@ export default function StaffManager() {
 
       if (res.data.success) {
         setSuccess('Thêm tài khoản nhân viên thành công!');
-        setForm({ username: '', password: '', full_name: '', department: '', position: 'Nhân viên', salary: '' });
+        setForm({ username: '', password: '', full_name: '', phone: '', address: '', position: 'Nhân viên' });
         fetchStaffs();
       }
     } catch (err) {
@@ -141,12 +141,12 @@ export default function StaffManager() {
             />
           </div>
           <div className="col-md-4">
-            <label className="form-label small fw-bold">Phòng ban</label>
+            <label className="form-label small fw-bold">Số điện thoại</label>
             <input 
-              type="text" 
+              type="tel" 
               className="form-control" 
-              value={form.department} 
-              onChange={(e) => setForm({ ...form, department: e.target.value })} 
+              value={form.phone} 
+              onChange={(e) => setForm({ ...form, phone: e.target.value })} 
             />
           </div>
           <div className="col-md-4">
@@ -158,13 +158,13 @@ export default function StaffManager() {
               onChange={(e) => setForm({ ...form, position: e.target.value })} 
             />
           </div>
-          <div className="col-md-4">
-            <label className="form-label small fw-bold">Mức lương (VNĐ)</label>
+          <div className="col-md-12">
+            <label className="form-label small fw-bold">Địa chỉ</label>
             <input 
-              type="number" 
+              type="text" 
               className="form-control" 
-              value={form.salary} 
-              onChange={(e) => setForm({ ...form, salary: e.target.value })} 
+              value={form.address} 
+              onChange={(e) => setForm({ ...form, address: e.target.value })} 
             />
           </div>
           <div className="col-12">
@@ -185,9 +185,8 @@ export default function StaffManager() {
             <th className="py-3 ps-4">ID</th>
             <th className="py-3">Tên đăng nhập</th>
             <th className="py-3">Họ và tên</th>
-            <th className="py-3">Phòng ban</th>
+            <th className="py-3">Số điện thoại</th>
             <th className="py-3">Chức vụ</th>
-            <th className="py-3">Mức lương</th>
             <th className="py-3 text-end pe-4">Thao tác</th>
           </tr>
         </thead>
@@ -197,11 +196,8 @@ export default function StaffManager() {
               <td className="ps-4 fw-bold">#{staff.id}</td>
               <td><span className="badge bg-dark">{staff.username}</span></td>
               <td className="fw-semibold text-primary">{staff.full_name || 'Chưa cập nhật'}</td>
-              <td>{staff.department || 'Chưa phân ban'}</td>
+              <td>{staff.phone || 'Chưa có'}</td>
               <td><span className="badge bg-secondary">{staff.position || 'Nhân viên'}</span></td>
-              <td className="fw-bold text-success">
-                {staff.salary ? Number(staff.salary).toLocaleString('vi-VN') + ' đ' : '0 đ'}
-              </td>
               <td className="text-end pe-4">
                 <button className="btn btn-sm btn-outline-warning me-2" onClick={() => handleResetPassword(staff.user_id)} title="Cấp lại mật khẩu">
                   <i className="fa-solid fa-key"></i> Reset MK

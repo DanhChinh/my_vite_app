@@ -1,11 +1,10 @@
-// src/pages/Checkout.jsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import Navbar from '../components/shared/Navbar';
-import { useCart } from '../context/CartContext';
+import Navbar from '../../components/shared/Navbar';
+import { useCart } from '../../context/CartContext';
 
-export default function Checkout() {
+export default function CheckoutPage() {
   const [profile, setProfile] = useState({ full_name: '', phone: '', address: '' });
   const navigate = useNavigate();
   const { cartItems, clearCart } = useCart();

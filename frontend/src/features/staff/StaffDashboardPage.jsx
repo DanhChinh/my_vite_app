@@ -1,10 +1,9 @@
-// src/pages/StaffDashboard.jsx
 import React, { useState, useEffect, useCallback } from 'react';
-import Navbar from '../components/Navbar';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import Navbar from '../../components/shared/Navbar';
 
-export default function StaffDashboard() {
+export default function StaffDashboardPage() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
@@ -44,7 +43,7 @@ export default function StaffDashboard() {
     try {
       const token = localStorage.getItem('token');
       const res = await axios.put(
-        `http://localhost:5000/api/staff/orders/${orderId}`, 
+        `http://localhost:5000/api/staff/orders/${orderId}`,
         { status: newStatus },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -61,9 +60,8 @@ export default function StaffDashboard() {
   return (
     <div className="bg-light min-vh-100">
       <Navbar />
-      
+
       <div className="container py-4">
-        {/* Tiêu đề trang */}
         <div className="row align-items-center mb-4">
           <div className="col">
             <h2 className="fw-bold text-dark m-0">
@@ -78,7 +76,6 @@ export default function StaffDashboard() {
           </div>
         </div>
 
-        {/* Thông báo lỗi */}
         {errorMsg && (
           <div className="alert alert-danger shadow-sm" role="alert">
             <i className="fa-solid fa-triangle-exclamation me-2"></i> {errorMsg}
@@ -88,7 +85,6 @@ export default function StaffDashboard() {
           </div>
         )}
 
-        {/* Khung chứa bảng dữ liệu với CHIỀU CAO TỐI THIỂU (min-height) */}
         <div className="card border-0 shadow-sm rounded-3 overflow-visible" style={{ minHeight: '400px' }}>
           <div className="card-body p-0">
             {loading ? (
@@ -102,7 +98,6 @@ export default function StaffDashboard() {
                 <p className="text-muted fs-5 m-0">Chưa có đơn hàng nào trong hệ thống.</p>
               </div>
             ) : (
-              /* Dùng overflow-visible ở đây để dropdown không bị bóp méo hoặc ẩn đi */
               <div className="table-responsive m-0 overflow-visible" style={{ minHeight: '350px' }}>
                 <table className="table table-hover align-middle mb-0">
                   <thead className="table-dark text-uppercase fs-7">
@@ -122,12 +117,8 @@ export default function StaffDashboard() {
                         <td className="ps-4 fw-bold text-primary">#{order.id}</td>
                         <td className="fw-semibold text-dark">{order.full_name || 'Khách vãng lai'}</td>
                         <td className="text-secondary">{order.phone || 'Chưa có'}</td>
-                        <td className="text-secondary text-truncate" style={{ maxWidth: '220px' }} title={order.address}>
-                          {order.address || 'Chưa cập nhật'}
-                        </td>
-                        <td className="text-danger fw-bold">
-                          {Number(order.total_price).toLocaleString('vi-VN')} đ
-                        </td>
+                        <td className="text-secondary text-truncate" style={{ maxWidth: '220px' }} title={order.address}>{order.address || 'Chưa cập nhật'}</td>
+                        <td className="text-danger fw-bold">{Number(order.total_price).toLocaleString('vi-VN')} đ</td>
                         <td>
                           <span className={`badge px-3 py-2 fw-semibold ${
                             order.status === 'Pending' ? 'bg-warning text-dark' :
