@@ -50,7 +50,7 @@ export default function ProductCard({ product }) {
         </div>
 
         <div className="d-flex gap-2">
-          <Link to={`/product/${product.id}`} className="btn btn-outline-dark btn-sm flex-grow-1">
+          <Link to={`/products/${product.id}`} className="btn btn-outline-dark btn-sm flex-grow-1">
             Chi tiết
           </Link>
           <button className="btn btn-warning btn-sm" onClick={handleAddToCart} title="Thêm vào giỏ hàng">

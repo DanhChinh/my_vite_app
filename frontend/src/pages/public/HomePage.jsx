@@ -3,7 +3,8 @@ import { useSearchParams } from 'react-router-dom';
 import BannerCarousel from '../../components/public/BannerCarousel';
 import CategoryFilter from '../../components/public/CategoryFilter';
 import ProductCard from '../../components/public/ProductCard';
-import { publicService } from '../../services/publicService';
+import { categoryService } from '../../services/categoryService';
+import { productService } from '../../services/productService';
 
 export default function HomePage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -28,7 +29,7 @@ export default function HomePage() {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const res = await publicService.getCategories();
+        const res = await categoryService.getCategories();
         setCategories(res?.data || []);
       } catch (err) {
         console.error('Lỗi tải danh mục:', err);
@@ -51,9 +52,10 @@ export default function HomePage() {
           maxPrice: priceRange.max,
           sort: sortBy
         };
-        const res = await publicService.getProducts(params);
-        setProducts(res?.data?.items || []);
-        setTotalPages(res?.data?.totalPages || 1);
+        const res = await productService.getProducts(params);
+        console.log(res)
+        setProducts(res?.items || []);
+        setTotalPages(res?.totalPages || 1);
       } catch (err) {
         console.error('Lỗi tải sản phẩm:', err);
       } finally {
