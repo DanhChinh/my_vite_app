@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useAuth } from './AuthContext';
-import { PUBLIC_ENDPOINTS, CUSTOMER_ENDPOINTS } from '../constants/api';
+import { PUBLIC_ENDPOINTS } from '../constants/api'; // Dùng chung endpoint giỏ hàng
 import { getGuestSessionId, clearGuestSessionId } from '../utils/auth';
 
 const CartContext = createContext(null);
@@ -16,28 +16,22 @@ export function CartProvider({ children }) {
     if (token && user?.role === 'customer') {
       headers['Authorization'] = `Bearer ${token}`;
     } else {
-      // Gửi Session ID qua Custom Header để Backend luôn nhận được
       headers['X-Session-Id'] = getGuestSessionId();
     }
     return headers;
   }, [token, user]);
 
-  // 1. Tải giỏ hàng
+  // 1. Tải giỏ hàng (Dùng chung 1 endpoint nhờ backend hỗ trợ optionalAuth)
   const fetchCart = useCallback(async () => {
     setLoading(true);
     try {
-      let response;
-      if (token && user?.role === 'customer') {
-        response = await fetch(CUSTOMER_ENDPOINTS.CART, {
-          headers: getHeaders()
-        });
-      } else {
-        const sessionId = getGuestSessionId();
-        // Gửi cả trên URL query và Header để đảm bảo an toàn
-        response = await fetch(`${PUBLIC_ENDPOINTS.CART}?session_id=${sessionId}`, {
-          headers: getHeaders()
-        });
-      }
+      const sessionId = getGuestSessionId();
+      // Truyền thêm query session_id để phòng hờ trường hợp guest
+      const url = `${PUBLIC_ENDPOINTS.CART}?session_id=${sessionId}`;
+
+      const response = await fetch(url, {
+        headers: getHeaders()
+      });
 
       const result = await response.json();
 
@@ -53,9 +47,9 @@ export function CartProvider({ children }) {
     } finally {
       setLoading(false);
     }
-  }, [token, user, getHeaders]);
+  }, [getHeaders]);
 
-  // Tự động tải lại giỏ hàng khi mount hoặc khi login/logout
+  // Tự động tải lại giỏ hàng khi mount hoặc khi trạng thái user/token thay đổi
   useEffect(() => {
     fetchCart();
   }, [fetchCart]);
@@ -63,32 +57,25 @@ export function CartProvider({ children }) {
   // 2. Thêm sản phẩm vào giỏ hàng
   const addToCart = async (product, quantity = 1) => {
     try {
-      const isCustomer = token && user?.role === 'customer';
-      const endpoint = isCustomer ? CUSTOMER_ENDPOINTS.ADD_TO_CART : PUBLIC_ENDPOINTS.ADD_TO_CART;
       const sessionId = getGuestSessionId();
-
       const bodyData = {
         product_id: product.id,
         quantity,
-        session_id: sessionId // Gửi trong body
+        session_id: sessionId
       };
 
-      const res = await fetch(endpoint, {
+      const res = await fetch(PUBLIC_ENDPOINTS.ADD_TO_CART, {
         method: 'POST',
-        headers: getHeaders(), // Gửi X-Session-Id trong Headers
+        headers: getHeaders(),
         body: JSON.stringify(bodyData)
       });
 
       const result = await res.json();
       if (result.success) {
-        // Cập nhật lại session_id nếu Backend trả về ID chính thức
-        if (result.session_id) {
-          localStorage.setItem('guest_session_id', result.session_id);
-        }
         await fetchCart();
         return { success: true };
       }
-      return { success: false };
+      return { success: false, message: result.message };
     } catch (error) {
       console.error('Lỗi khi thêm vào giỏ:', error);
       return { success: false };
@@ -98,12 +85,8 @@ export function CartProvider({ children }) {
   // 3. Xóa sản phẩm khỏi giỏ
   const removeFromCart = async (productId) => {
     try {
-      const isCustomer = token && user?.role === 'customer';
-      // const endpoint = isCustomer 
-      //   ? CUSTOMER_ENDPOINTS.REMOVE_CART_ITEM(productId) 
-      //   : PUBLIC_ENDPOINTS.REMOVE_CART_ITEM(productId);
+      const endpoint = PUBLIC_ENDPOINTS.REMOVE_CART_ITEM ? PUBLIC_ENDPOINTS.REMOVE_CART_ITEM(productId) : `${PUBLIC_ENDPOINTS.CART}/${productId}`;
       
-      const endpoint = PUBLIC_ENDPOINTS.REMOVE_CART_ITEM(productId);
       const res = await fetch(endpoint, {
         method: 'DELETE',
         headers: getHeaders(),
@@ -132,16 +115,13 @@ export function CartProvider({ children }) {
     }
 
     try {
-      const isCustomer = token && user?.role === 'customer';
-      const endpoint = isCustomer ? CUSTOMER_ENDPOINTS.UPDATE_CART : PUBLIC_ENDPOINTS.UPDATE_CART;
-
       const bodyData = {
         product_id: productId,
         quantity: newQuantity,
         session_id: getGuestSessionId()
       };
 
-      const res = await fetch(endpoint, {
+      const res = await fetch(PUBLIC_ENDPOINTS.UPDATE_CART || PUBLIC_ENDPOINTS.CART, {
         method: 'PUT',
         headers: getHeaders(),
         body: JSON.stringify(bodyData)

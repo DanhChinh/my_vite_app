@@ -66,7 +66,21 @@ export const customerService = {
 
   /**
    * Tạo đơn hàng mới từ tài khoản đã đăng nhập
+   * 
+   * 
    */
+async mergeGuestCart(sessionId) {
+    const response = await fetch(CUSTOMER_ENDPOINTS.MERGE_CART, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeader(),
+      },
+      body: JSON.stringify({ session_id: sessionId }),
+    });
+    return handleResponse(response);
+  },
+
   async createOrder(orderData) {
     const response = await fetch(CUSTOMER_ENDPOINTS.ORDERS, {
       method: 'POST',
@@ -178,6 +192,43 @@ export const customerService = {
     });
     return handleResponse(response);
   },
+
+// ==========================================
+  // 5. SỔ ĐỊA CHỈ (Addresses)
+  // ==========================================
+
+  /**
+   * Lấy danh sách địa chỉ nhận hàng của người dùng
+   */
+  async getAddresses() {
+    const response = await fetch(CUSTOMER_ENDPOINTS.ADDRESSES, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeader(),
+      },
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Thêm địa chỉ nhận hàng mới
+   * @param {Object} addressData - { recipient_name, phone, address_line, specific_address, ward_name, district_name, province_name, is_default }
+   */
+  async addAddress(addressData) {
+    const response = await fetch(CUSTOMER_ENDPOINTS.ADDRESSES, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeader(),
+      },
+      body: JSON.stringify(addressData),
+    });
+    return handleResponse(response);
+  },
+
+
+
 };
 
 export default customerService;

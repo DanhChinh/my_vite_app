@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import { CUSTOMER_ENDPOINTS } from '../../constants/api';
+import customerService from '../../services/customerService';
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
@@ -10,13 +11,16 @@ export default function CheckoutPage() {
   const { user, token, loading: authLoading } = useAuth();
 
   const [loading, setLoading] = useState(false);
+  const [addresses, setAddresses] = useState([]);
+  const [selectedAddressId, setSelectedAddressId] = useState('');
+
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
     phone: '',
     address: '',
     note: '',
-    paymentMethod: 'COD' // COD hoặc BANKING
+    paymentMethod: 'COD'
   });
 
   const [errors, setErrors] = useState({});
@@ -29,18 +33,61 @@ export default function CheckoutPage() {
     }
   }, [token, authLoading, navigate]);
 
-  // 2. Tự động điền thông tin người dùng từ AuthContext khi có dữ liệu
+  // 2. Tự động điền thông tin user và tải sổ địa chỉ từ API
   useEffect(() => {
     if (user) {
       setFormData((prev) => ({
         ...prev,
         fullName: user.full_name || user.name || prev.fullName,
         email: user.email || prev.email,
-        phone: user.phone || prev.phone,
-        address: user.address || prev.address
+        phone: user.phone || prev.phone
       }));
     }
-  }, [user]);
+
+    if (token) {
+      customerService.getAddresses()
+        .then((res) => {
+          if (res.success && res.data && res.data.length > 0) {
+            setAddresses(res.data);
+            // Tìm địa chỉ mặc định hoặc lấy cái đầu tiên
+            const defaultAddr = res.data.find(item => item.is_default === 1) || res.data[0];
+            setSelectedAddressId(defaultAddr.id);
+            setFormData(prev => ({
+              ...prev,
+              fullName: defaultAddr.recipient_name || prev.fullName,
+              phone: defaultAddr.phone || prev.phone,
+              address: defaultAddr.address_line || ''
+            }));
+          }
+        })
+        .catch((err) => console.error('Không thể tải sổ địa chỉ:', err));
+    }
+  }, [user, token]);
+
+  // Xử lý khi người dùng chọn một địa chỉ có sẵn trong sổ địa chỉ
+  const handleSelectSavedAddress = (e) => {
+    const addressId = e.target.value;
+    setSelectedAddressId(addressId);
+
+    if (addressId === 'other') {
+      setFormData(prev => ({ ...prev, address: '' }));
+      return;
+    }
+
+    const found = addresses.find(item => String(item.id) === String(addressId));
+    if (found) {
+      setFormData(prev => ({
+        ...prev,
+        fullName: found.recipient_name || prev.fullName,
+        phone: found.phone || prev.phone,
+        address: found.address_line || ''
+      }));
+      // Xóa lỗi địa chỉ nếu có
+      if (errors.address) setErrors(prev => ({ ...prev, address: '' }));
+      if (errors.fullName) setErrors(prev => ({ ...prev, fullName: '' }));
+      if (errors.phone) setErrors(prev => ({ ...prev, phone: '' }));
+    }
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -51,6 +98,8 @@ export default function CheckoutPage() {
   };
 
   const validateForm = () => {
+    console.log(formData);
+    
     const newErrors = {};
     if (!formData.fullName.trim()) newErrors.fullName = 'Vui lòng nhập họ và tên';
     if (!formData.phone.trim()) {
@@ -143,7 +192,33 @@ export default function CheckoutPage() {
           <div className="col-lg-7">
             {/* Card thông tin nhận hàng */}
             <div className="card border-0 shadow-sm p-4 mb-4">
-              <h4 className="card-title mb-3 text-primary fw-bold">Thông tin giao hàng</h4>
+              <div className="d-flex justify-content-between align-items-center mb-3">
+                <h4 className="card-title text-primary fw-bold mb-0">Thông tin giao hàng</h4>
+                <Link to="/customer/addresses" className="small text-decoration-none fw-semibold">
+                  <i className="bi bi-geo-alt me-1"></i> Quản lý sổ địa chỉ
+                </Link>
+              </div>
+
+              {/* Chọn nhanh từ Sổ địa chỉ nếu có */}
+              {addresses.length > 0 && (
+                <div className="mb-3 p-3 bg-light rounded-3 border">
+                  <label className="form-label fw-semibold small text-muted mb-1">
+                    Chọn địa chỉ từ Sổ địa chỉ của bạn:
+                  </label>
+                  <select
+                    className="form-select form-select-sm"
+                    value={selectedAddressId}
+                    onChange={handleSelectSavedAddress}
+                  >
+                    {addresses.map((addr) => (
+                      <option key={addr.id} value={addr.id}>
+                        {addr.recipient_name} - {addr.phone} ({addr.address_line}) {addr.is_default === 1 ? '[Mặc định]' : ''}
+                      </option>
+                    ))}
+                    <option value="other">+ Nhập địa chỉ khác...</option>
+                  </select>
+                </div>
+              )}
 
               <div className="mb-3">
                 <label className="form-label fw-semibold">

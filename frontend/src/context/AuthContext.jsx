@@ -2,6 +2,8 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import publicService from '../services/publicService';
 import customerService from '../services/customerService';
 import adminService from '../services/adminService'; // Nhớ import adminService (nếu có)
+import { getGuestSessionId, clearGuestSessionId } from '../utils/auth';
+
 import {
   saveAuthToken,
   clearAuthToken,
@@ -60,10 +62,11 @@ export function AuthProvider({ children }) {
     fetchUserProfile();
   }, [fetchUserProfile]);
 
-  // 2. Xử lý Đăng nhập
+// 2. Xử lý Đăng nhập
   const login = async (username, password) => {
     try {
       const result = await publicService.login({ username, password });
+      console.log("publicService.login",result)
 
       if (result.success) {
         const newToken = result.token;
@@ -78,6 +81,24 @@ export function AuthProvider({ children }) {
         setToken(newToken);
         setRole(userRole);
         setUser(userData);
+
+        // ==========================================
+        // BỔ SUNG: Hợp nhất giỏ hàng vãng lai (Guest Cart)
+        // ==========================================
+        if (userRole === 'customer') {
+          const guestSessionId = getGuestSessionId();
+          if (guestSessionId) {
+            try {
+              const mergeRes = await customerService.mergeGuestCart(guestSessionId);
+              console.log("customerService.mergeGuestCart", mergeRes)
+              if (mergeRes.success) {
+                clearGuestSessionId(); // Xóa session vãng lai sau khi merge thành công
+              }
+            } catch (mergeErr) {
+              console.error('Lỗi tự động hợp nhất giỏ hàng khi đăng nhập:', mergeErr);
+            }
+          }
+        }
 
         return { success: true, role: userRole };
       }
@@ -94,7 +115,6 @@ export function AuthProvider({ children }) {
       };
     }
   };
-
   // 3. Xử lý Đăng ký
   const register = async (userData) => {
     try {

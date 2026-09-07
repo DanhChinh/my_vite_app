@@ -161,7 +161,7 @@ export default function Navbar() {
         </div>
       </div>
 
-      {isLoginOpen && <Login modal onClose={() => setIsLoginOpen(false)} />}
+      {isLoginOpen && <Login isOpen={isLoginOpen} onClose={() => setIsLoginOpen(false)} />}
     </nav>
   );
 }

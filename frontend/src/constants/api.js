@@ -35,7 +35,10 @@ export const CUSTOMER_ENDPOINTS = {
   PRODUCT_REVIEWS: (id) => `${API_BASE_URL}/customer/products/${id}/reviews`,
   REVIEWABLE_ORDERS: (id) => `${API_BASE_URL}/customer/products/${id}/reviewable-orders`,
   REVIEW: (id) => `${API_BASE_URL}/customer/reviews/${id}`,
-  REMOVE_CART_ITEM:(cart_item_id) => `${API_BASE_URL}/cart/item/${cart_item_id}`
+  MERGE_CART: `${API_BASE_URL}/customer/cart/merge`,
+  REMOVE_CART_ITEM:(cart_item_id) => `${API_BASE_URL}/cart/item/${cart_item_id}`,
+  CART:`${API_BASE_URL}/cart`,
+  ORDERS:`${API_BASE_URL}/customer/orders`
 
   
 };

@@ -8,6 +8,7 @@ import { Link, useNavigate } from 'react-router-dom';
 export default function CartPage() {
   const navigate = useNavigate();
   const { cartItems, cartTotal, updateQuantity, removeFromCart, loading } = useCart();
+  
   const { token } = useAuth();
 
   // State quản lý việc hiển thị LoginModal
@@ -50,7 +51,7 @@ export default function CartPage() {
         </div>
         <h3 className="fw-bold mb-3">Giỏ hàng của bạn đang trống</h3>
         <p className="text-muted mb-4">Hãy chọn thêm sản phẩm để tiếp tục mua sắm nhé!</p>
-        <Link to="/products" className="btn btn-primary btn-lg px-4">
+        <Link to="/" className="btn btn-primary btn-lg px-4">
           Khám phá sản phẩm
         </Link>
       </div>
@@ -82,9 +83,10 @@ export default function CartPage() {
                     const itemQty = Number(item.quantity) || 0;
                     const itemTotal = itemPrice * itemQty;
                     const productId = item.product_id || item.id;
-
+                    const cart_item_id= item.cart_item_id;
+                
                     return (
-                      <tr key={item.cart_item_id || productId}>
+                      <tr key={cart_item_id || productId}>
                         <td>
                           <div className="d-flex align-items-center">
                             <img
@@ -133,11 +135,10 @@ export default function CartPage() {
                         <td className="text-center">
                           <button
                             className="btn btn-link text-danger p-0"
-                            onClick={() => removeFromCart(productId)}
+                            onClick={() => removeFromCart(cart_item_id)}
                             title="Xóa khỏi giỏ hàng"
                           >
-                            xoa
-                            <i className="bi bi-trash fs-5"></i>
+                            <i className="bi bi-trash3"></i>
                           </button>
                         </td>
                       </tr>

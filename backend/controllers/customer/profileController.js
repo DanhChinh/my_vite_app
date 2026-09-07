@@ -8,7 +8,7 @@ exports.getProfile = async (req, res) => {
     const userId = req.user.id;
 
     const [[profile]] = await pool.query(
-      `SELECT u.id AS user_id, u.username, u.email, u.phone, u.created_at,
+      `SELECT u.id AS user_id, u.username, u.email, u.phone, u.role, u.created_at,
               c.id AS customer_id, c.full_name, c.gender, c.date_of_birth, c.avatar_url
        FROM users u
        LEFT JOIN customers c ON c.user_id = u.id

@@ -1,29 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastProvider';
+import customerService from '../../services/customerService'; // Import service vừa tạo
 
 export default function AddressPage() {
   const { token } = useAuth();
   const { showToast } = useToast() || { showToast: console.log };
 
-  // Danh sách địa chỉ từ Database
-  const [addresses, setAddresses] = useState([
-    {
-      id: 1,
-      user_id: 1,
-      recipient_name: 'Nguyễn Văn A',
-      phone: '0987654321',
-      province_code: '01',
-      province_name: 'Thành phố Hà Nội',
-      district_code: '001',
-      district_name: 'Quận Ba Đình',
-      ward_code: '00001',
-      ward_name: 'Phường Phúc Xá',
-      specific_address: 'Số 123 đường A',
-      address_line: 'Số 123 đường A, Phường Phúc Xá, Quận Ba Đình, Thành phố Hà Nội',
-      is_default: 1
-    }
-  ]);
+  // Danh sách địa chỉ từ Database (ban đầu để mảng rỗng)
+  const [addresses, setAddresses] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   // State Dữ liệu Hành chính (Provinces API)
   const [provinces, setProvinces] = useState([]);
@@ -48,7 +34,26 @@ export default function AddressPage() {
     is_default: 0
   });
 
-  // 1. Fetch danh sách Tỉnh / Thành phố khi mount
+  // 1. Fetch danh sách địa chỉ từ Backend khi component mount
+  const fetchAddresses = async () => {
+    try {
+      setLoading(true);
+      const response = await customerService.getAddresses();
+      if (response.success) {
+        setAddresses(response.data);
+      }
+    } catch (error) {
+      showToast(error.message || 'Không thể tải danh sách địa chỉ', 'danger');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAddresses();
+  }, []);
+
+  // 2. Fetch danh sách Tỉnh / Thành phố từ Open API
   useEffect(() => {
     fetch('https://provinces.open-api.vn/api/p/')
       .then((res) => res.json())
@@ -56,7 +61,7 @@ export default function AddressPage() {
       .catch((err) => console.error('Lỗi lấy danh sách Tỉnh/Thành:', err));
   }, []);
 
-  // 2. Fetch Quận/Huyện khi chọn Tỉnh/Thành
+  // 3. Fetch Quận/Huyện khi chọn Tỉnh/Thành
   const handleProvinceChange = (e) => {
     const code = e.target.value;
     const selected = provinces.find((p) => String(p.code) === String(code));
@@ -86,7 +91,7 @@ export default function AddressPage() {
     }
   };
 
-  // 3. Fetch Phường/Xã khi chọn Quận/Huyện
+  // 4. Fetch Phường/Xã khi chọn Quận/Huyện
   const handleDistrictChange = (e) => {
     const code = e.target.value;
     const selected = districts.find((d) => String(d.code) === String(code));
@@ -113,7 +118,6 @@ export default function AddressPage() {
     }
   };
 
-  // 4. Chọn Phường/Xã
   const handleWardChange = (e) => {
     const code = e.target.value;
     const selected = wards.find((w) => String(w.code) === String(code));
@@ -142,7 +146,6 @@ export default function AddressPage() {
         is_default: address.is_default
       });
 
-      // Fetch lại danh sách Quận/Huyện và Phường/Xã theo mã có sẵn
       if (address.province_code) {
         const resD = await fetch(`https://provinces.open-api.vn/api/p/${address.province_code}?depth=2`);
         const dataD = await resD.json();
@@ -178,11 +181,10 @@ export default function AddressPage() {
     setEditingId(null);
   };
 
-  // Submit Form (Tạo payload khớp với cấu trúc Database)
-  const handleSubmit = (e) => {
+  // Submit Form gọi API Backend
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Ghép tự động chuỗi address_line đầy đủ
     const addressParts = [
       formData.specific_address,
       formData.ward_name,
@@ -197,54 +199,38 @@ export default function AddressPage() {
       address_line: fullAddressLine
     };
 
-    let updatedList = [...addresses];
-
-    // Xử lý logic is_default duy nhất (Chỉ 1 địa chỉ có is_default = 1)
-    if (payload.is_default === 1) {
-      updatedList = updatedList.map((item) => ({ ...item, is_default: 0 }));
+    try {
+      if (editingId) {
+        // Nếu có API cập nhật địa chỉ, gọi ở đây (ví dụ: customerService.updateAddress(editingId, payload))
+        showToast('Tính năng cập nhật đang phát triển!', 'info');
+      } else {
+        // Gọi API thêm địa chỉ mới
+        const res = await customerService.addAddress(payload);
+        if (res.success) {
+          showToast('Thêm địa chỉ mới thành công!', 'success');
+          fetchAddresses(); // Làm mới lại danh sách từ DB
+          handleCloseModal();
+        }
+      }
+    } catch (error) {
+      showToast(error.message || 'Có lỗi xảy ra khi lưu địa chỉ', 'danger');
     }
-
-    if (editingId) {
-      updatedList = updatedList.map((item) =>
-        item.id === editingId ? { ...payload, id: item.id } : item
-      );
-      showToast('Cập nhật địa chỉ thành công!', 'success');
-    } else {
-      updatedList.push({ ...payload, id: Date.now() });
-      showToast('Thêm địa chỉ mới thành công!', 'success');
-    }
-
-    setAddresses(updatedList);
-    handleCloseModal();
   };
 
-  // Đặt mặc định
+  // Đặt mặc định (Cần bổ sung API tương ứng ở backend nếu có)
   const handleSetDefault = (id) => {
-    const updated = addresses.map((item) => ({
-      ...item,
-      is_default: item.id === id ? 1 : 0
-    }));
-    setAddresses(updated);
-    showToast('Đã đặt làm địa chỉ mặc định!', 'info');
+    showToast('Tính năng đặt mặc định đang cập nhật!', 'info');
   };
 
-  // Xóa địa chỉ
+  // Xóa địa chỉ (Cần bổ sung API tương ứng ở backend nếu có)
   const handleDelete = (id) => {
-    const target = addresses.find((a) => a.id === id);
-    if (target?.is_default === 1 && addresses.length > 1) {
-      alert('Không thể xóa địa chỉ mặc định. Vui lòng chọn địa chỉ khác làm mặc định trước!');
-      return;
-    }
-
     if (window.confirm('Bạn có chắc chắn muốn xóa địa chỉ này?')) {
-      setAddresses(addresses.filter((item) => item.id !== id));
-      showToast('Đã xóa địa chỉ thành công!', 'warning');
+      showToast('Tính năng xóa đang cập nhật!', 'info');
     }
   };
 
   return (
     <div className="card border-0 shadow-sm p-4">
-      {/* Header */}
       <div className="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom">
         <div>
           <h4 className="fw-bold mb-1">Sổ địa chỉ</h4>
@@ -255,8 +241,11 @@ export default function AddressPage() {
         </button>
       </div>
 
-      {/* List */}
-      {addresses.length === 0 ? (
+      {loading ? (
+        <div className="text-center py-5">
+          <div className="spinner-border text-primary" role="status"></div>
+        </div>
+      ) : addresses.length === 0 ? (
         <div className="text-center py-5">
           <i className="bi bi-geo-alt text-muted fs-1 d-block mb-3"></i>
           <p className="text-muted mb-0">Bạn chưa lưu địa chỉ nhận hàng nào.</p>
@@ -285,7 +274,6 @@ export default function AddressPage() {
                     <p className="text-secondary small mb-0">{item.address_line}</p>
                   </div>
 
-                  {/* Actions */}
                   <div className="d-flex align-items-center gap-2 ms-auto">
                     {item.is_default !== 1 && (
                       <button
@@ -330,7 +318,6 @@ export default function AddressPage() {
               <form onSubmit={handleSubmit}>
                 <div className="modal-body">
                   <div className="row g-3">
-                    {/* Người nhận & SĐT */}
                     <div className="col-md-6">
                       <label className="form-label small fw-semibold">Họ tên người nhận (*)</label>
                       <input
@@ -354,7 +341,6 @@ export default function AddressPage() {
                       />
                     </div>
 
-                    {/* Dynamic Select: Tỉnh / Huyện / Xã */}
                     <div className="col-md-4">
                       <label className="form-label small fw-semibold">Tỉnh / Thành phố (*)</label>
                       <select
@@ -408,7 +394,6 @@ export default function AddressPage() {
                       </select>
                     </div>
 
-                    {/* Địa chỉ cụ thể */}
                     <div className="col-12">
                       <label className="form-label small fw-semibold">Địa chỉ cụ thể (*)</label>
                       <input
@@ -421,7 +406,6 @@ export default function AddressPage() {
                       />
                     </div>
 
-                    {/* Default Checkbox */}
                     <div className="col-12">
                       <div className="form-check mt-2">
                         <input

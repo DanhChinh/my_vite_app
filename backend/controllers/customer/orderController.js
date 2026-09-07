@@ -9,13 +9,21 @@ exports.createOrder = async (req, res) => {
     await connection.beginTransaction();
 
     const userId = req.user.id;
-    const { shipping_address, payment_method = 'cod', note = '' } = req.body;
+    // Nhận đúng cấu trúc từ customer_info và payment_method do Frontend gửi lên
+    const { customer_info, payment_method = 'COD' } = req.body;
 
-    if (!shipping_address) {
+    if (!customer_info || !customer_info.address) {
       return res.status(400).json({ success: false, message: 'Địa chỉ giao hàng không được để trống' });
     }
 
-    // Lấy giỏ hàng kèm sản phẩm
+    if (!customer_info.full_name || !customer_info.phone) {
+      return res.status(400).json({ success: false, message: 'Vui lòng cung cấp họ tên và số điện thoại người nhận' });
+    }
+
+    const shipping_address = customer_info.address;
+    const note = customer_info.note || '';
+
+    // Lấy giỏ hàng
     const [[cart]] = await connection.query(`SELECT id FROM carts WHERE user_id = ?`, [userId]);
     if (!cart) {
       return res.status(400).json({ success: false, message: 'Giỏ hàng của bạn đang trống' });
@@ -33,12 +41,19 @@ exports.createOrder = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Giỏ hàng của bạn đang trống' });
     }
 
-    // Kiểm tra tồn kho & tính tổng tiền
     let totalPrice = 0;
     for (const item of cartItems) {
-      if (item.stock < item.quantity) {
-        throw new Error(`Sản phẩm "${item.product_name}" không đủ số lượng tồn kho`);
+      const [[product]] = await connection.query(
+        `SELECT stock FROM products WHERE id = ? FOR UPDATE`, 
+        [item.product_id]
+      );
+
+      if (!product || product.stock < item.quantity) {
+        const err = new Error(`Sản phẩm "${item.product_name}" không đủ số lượng tồn kho`);
+        err.statusCode = 400;
+        throw err;
       }
+
       totalPrice += Number(item.price) * item.quantity;
     }
 
@@ -51,7 +66,6 @@ exports.createOrder = async (req, res) => {
 
     const orderId = newOrder.insertId;
 
-    // Snapshot vào order_items & trừ kho
     for (const item of cartItems) {
       await connection.query(
         `INSERT INTO order_items (order_id, product_id, product_name, quantity, unit_price)
@@ -65,23 +79,23 @@ exports.createOrder = async (req, res) => {
       );
     }
 
-    // Xóa sản phẩm trong giỏ
     await connection.query(`DELETE FROM cart_items WHERE cart_id = ?`, [cart.id]);
 
     await connection.commit();
     res.json({
       success: true,
       message: 'Đặt hàng thành công',
+      order_id: orderId, // Đưa ra root để frontend nhận diện chính xác
       data: { order_id: orderId, total_price: totalPrice }
     });
   } catch (error) {
     await connection.rollback();
-    res.status(500).json({ success: false, message: error.message });
+    const statusCode = error.statusCode || 500;
+    res.status(statusCode).json({ success: false, message: error.message });
   } finally {
     connection.release();
   }
 };
-
 /**
  * Xem lịch sử danh sách đơn hàng
  */
@@ -104,19 +118,23 @@ exports.getMyOrders = async (req, res) => {
 
     const whereClause = filters.join(' AND ');
 
-    const [[{ total }]] = await pool.query(
-      `SELECT COUNT(id) AS total FROM orders WHERE ${whereClause}`,
-      params
-    );
+    // 1. Tạo câu query đếm tổng số lượng
+    const countSql = `SELECT COUNT(id) AS total FROM orders WHERE ${whereClause}`;
+    console.log("SQL Count:", pool.format(countSql, params));
 
-    const [orders] = await pool.query(
-      `SELECT id, total_price, status, payment_method, shipping_address, created_at
+    const [[{ total }]] = await pool.query(countSql, params);
+
+    // 2. Tạo câu query lấy danh sách orders có phân trang
+    const ordersSql = `SELECT id, total_price, status, payment_method, shipping_address, created_at
        FROM orders
        WHERE ${whereClause}
        ORDER BY created_at DESC
-       LIMIT ? OFFSET ?`,
-      [...params, limitNum, offset]
-    );
+       LIMIT ? OFFSET ?`;
+       
+    // Lưu ý: truyền thêm limitNum và offset vào mảng params khi dùng format
+    console.log("SQL Orders:", pool.format(ordersSql, [...params, limitNum, offset]));
+
+    const [orders] = await pool.query(ordersSql, [...params, limitNum, offset]);
 
     res.json({
       success: true,
@@ -129,6 +147,7 @@ exports.getMyOrders = async (req, res) => {
       }
     });
   } catch (error) {
+    console.error("Lỗi getMyOrders:", error);
     res.status(500).json({ success: false, message: error.message });
   }
 };

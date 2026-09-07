@@ -5,13 +5,21 @@ const pool = require('../../config/database');
  */
 exports.getCart = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ success: false, message: 'Chưa đăng nhập hoặc thiếu thông tin user' });
+    }
 
     const [items] = await pool.query(
       `SELECT 
-          ci.id AS cart_item_id, ci.quantity,
-          p.id AS product_id, p.name AS product_name, p.price, p.stock,
-          pi.image_url AS primary_image,
+          p.id AS id,
+          p.id AS product_id,
+          ci.id AS cart_item_id, 
+          ci.quantity,
+          p.name AS name, 
+          p.price AS price, 
+          p.stock AS stock,
+          pi.image_url AS image_url,
           (p.price * ci.quantity) AS item_total
        FROM carts c
        JOIN cart_items ci ON ci.cart_id = c.id
@@ -26,15 +34,16 @@ exports.getCart = async (req, res) => {
     res.json({
       success: true,
       data: {
-        items,
+        user_id: userId,
+        items: items,
         total_price: totalPrice
       }
     });
   } catch (error) {
+    console.error("Lỗi getCustomerCart:", error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
-
 /**
  * Thêm sản phẩm vào giỏ hàng
  */
@@ -43,7 +52,12 @@ exports.addToCart = async (req, res) => {
   try {
     await connection.beginTransaction();
 
-    const userId = req.user.id;
+    // 1. Lấy userId từ token đã xác thực
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ success: false, message: 'Chưa đăng nhập' });
+    }
+
     const { product_id, quantity = 1 } = req.body;
     const qtyNum = parseInt(quantity, 10);
 
@@ -51,20 +65,24 @@ exports.addToCart = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Dữ liệu không hợp lệ' });
     }
 
-    // Check tồn kho
+    // 2. Check tồn kho sản phẩm
     const [[product]] = await connection.query(`SELECT id, stock FROM products WHERE id = ?`, [product_id]);
     if (!product) {
       return res.status(404).json({ success: false, message: 'Sản phẩm không tồn tại' });
     }
 
-    // Tìm hoặc khởi tạo giỏ hàng cho user
+    // 3. TÌM HOẶC TẠO GIỎ HÀNG DỰA TRÊN user_id (Đảm bảo session_id = NULL)
     let [[cart]] = await connection.query(`SELECT id FROM carts WHERE user_id = ?`, [userId]);
+    
     if (!cart) {
-      const [newCart] = await connection.query(`INSERT INTO carts (user_id) VALUES (?)`, [userId]);
+      const [newCart] = await connection.query(
+        `INSERT INTO carts (user_id, session_id) VALUES (?, NULL)`, 
+        [userId]
+      );
       cart = { id: newCart.insertId };
     }
 
-    // Kiểm tra món hàng trong giỏ
+    // 4. Thêm hoặc cập nhật cart_items như bình thường...
     const [[existingItem]] = await connection.query(
       `SELECT id, quantity FROM cart_items WHERE cart_id = ? AND product_id = ?`,
       [cart.id, product_id]
@@ -99,7 +117,7 @@ exports.addToCart = async (req, res) => {
 /**
  * Merge giỏ hàng từ Guest Session vào User Account khi đăng nhập
  */
-exports.mergeGuestCart = async (req, res) => {
+exports.mergeCart = async (req, res) => {
   const connection = await pool.getConnection();
   try {
     await connection.beginTransaction();
@@ -108,10 +126,11 @@ exports.mergeGuestCart = async (req, res) => {
     const { session_id } = req.body;
 
     if (!session_id) {
-      return res.status(400).json({ success: false, message: 'Thiếu session_id' });
+      await connection.commit();
+      return res.json({ success: true, message: 'Không có session_id để merge' });
     }
 
-    // Lấy cart của guest
+    // 1. Lấy cart của guest
     const [[guestCart]] = await connection.query(
       `SELECT id FROM carts WHERE session_id = ? AND user_id IS NULL`,
       [session_id]
@@ -119,17 +138,23 @@ exports.mergeGuestCart = async (req, res) => {
 
     if (!guestCart) {
       await connection.commit();
-      return res.json({ success: true, message: 'Không có giỏ hàng vãng lai để chuyển' });
+      return res.json({ success: true, message: 'Không tìm thấy giỏ hàng vãng lai' });
     }
 
-    // Lấy hoặc tạo user cart
+    // 2. Lấy hoặc tạo user cart
     let [[userCart]] = await connection.query(`SELECT id FROM carts WHERE user_id = ?`, [userId]);
     if (!userCart) {
-      const [newCart] = await connection.query(`INSERT INTO carts (user_id) VALUES (?)`, [userId]);
-      userCart = { id: newCart.insertId };
+      // Nếu user chưa có cart, ta có thể TẬN DỤNG luôn cart của guest bằng cách gán user_id và cho session_id = NULL
+      // Cách này tối ưu hơn là tạo mới, tránh lỗi Unique Key của session_id!
+      await connection.query(
+        `UPDATE carts SET user_id = ?, session_id = NULL WHERE id = ?`,
+        [userId, guestCart.id]
+      );
+      await connection.commit();
+      return res.json({ success: true, message: 'Đã chuyển giỏ hàng guest thành giỏ hàng user thành công' });
     }
 
-    // Lấy items trong guest cart
+    // Nếu user đã có sẵn cart riêng trước đó -> Tiến hành gộp items từ guestCart sang userCart
     const [guestItems] = await connection.query(
       `SELECT product_id, quantity FROM cart_items WHERE cart_id = ?`,
       [guestCart.id]
@@ -154,13 +179,14 @@ exports.mergeGuestCart = async (req, res) => {
       }
     }
 
-    // Xóa guest cart sau khi hợp nhất
+    // Xóa giỏ hàng guest cũ sau khi đã gộp xong
     await connection.query(`DELETE FROM carts WHERE id = ?`, [guestCart.id]);
 
     await connection.commit();
     res.json({ success: true, message: 'Đã hợp nhất giỏ hàng thành công' });
   } catch (error) {
     await connection.rollback();
+    console.error("Lỗi mergeGuestCart:", error);
     res.status(500).json({ success: false, message: error.message });
   } finally {
     connection.release();

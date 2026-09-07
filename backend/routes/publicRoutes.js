@@ -11,10 +11,10 @@ router.get('/products', publicController.getProducts);
 router.get('/products/:id', publicController.getProductDetail);
 
 // Guest Cart
-router.get('/cart', publicController.getGuestCart);
-router.post('/cart/add', publicController.addToGuestCart);
-router.put('/cart/update', publicController.updateGuestCartItem);
-router.delete('/cart/item/:cart_item_id', publicController.removeGuestCartItem);
+// router.get('/cart', publicController.getGuestCart);
+// router.post('/cart/add', publicController.addToGuestCart);
+// router.put('/cart/update', publicController.updateGuestCartItem);
+// router.delete('/cart/item/:cart_item_id', publicController.removeGuestCartItem);
 
 // Guest Checkout & Tracking
 router.post('/checkout', publicController.guestCheckout);

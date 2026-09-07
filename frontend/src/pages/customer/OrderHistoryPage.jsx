@@ -1,33 +1,98 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
+import customerService from '../../services/customerService';
 
 export default function OrderHistoryPage() {
+  const { token, user } = useAuth();
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('ALL');
 
-  // Dữ liệu mẫu đơn hàng
-  const orders = [
-    {
-      id: 'ORD1001',
-      date: '2026-03-25',
-      total: 1250000,
-      status: 'DELIVERED',
-      statusText: 'Đã giao hàng',
-      badgeClass: 'bg-success',
-      itemsCount: 2
-    },
-    {
-      id: 'ORD1002',
-      date: '2026-03-28',
-      total: 450000,
-      status: 'PENDING',
-      statusText: 'Chờ xác nhận',
-      badgeClass: 'bg-warning text-dark',
-      itemsCount: 1
+  // Hàm gọi API lấy danh sách đơn hàng thực tế từ Backend
+  const fetchOrders = useCallback(async () => {
+    if (!token || user?.role !== 'customer') {
+      setLoading(false);
+      return;
     }
-  ];
+
+    try {
+      setLoading(true);
+      const result = await customerService.getOrders()
+      if (result.success) {
+        // Chuẩn hóa dữ liệu trả về từ Database
+        const rawOrders = result.data?.orders || (Array.isArray(result.data) ? result.data : []);
+        
+        const formattedOrders = rawOrders.map(order => {
+          let statusText = 'Chờ xác nhận';
+          let badgeClass = 'bg-warning text-dark';
+
+          switch (order.status) {
+            case 'PENDING':
+              statusText = 'Chờ xác nhận';
+              badgeClass = 'bg-warning text-dark';
+              break;
+            case 'PROCESSING':
+              statusText = 'Đang xử lý';
+              badgeClass = 'bg-info text-dark';
+              break;
+            case 'DELIVERING':
+              statusText = 'Đang giao hàng';
+              badgeClass = 'bg-primary';
+              break;
+            case 'DELIVERED':
+              statusText = 'Đã giao hàng';
+              badgeClass = 'bg-success';
+              break;
+            case 'CANCELLED':
+              statusText = 'Đã hủy';
+              badgeClass = 'bg-danger';
+              break;
+            default:
+              statusText = order.status;
+              badgeClass = 'bg-secondary';
+          }
+
+          return {
+            id: order.id,
+            date: order.created_at ? order.created_at.split('T')[0] : '',
+            total: Number(order.total_price || order.total || 0),
+            status: order.status,
+            statusText,
+            badgeClass,
+            itemsCount: order.items_count || order.itemsCount || 0
+          };
+        });
+
+        setOrders(formattedOrders);
+      } else {
+        setOrders([]);
+      }
+    } catch (error) {
+      console.error('Lỗi khi tải lịch sử đơn hàng:', error);
+      setOrders([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [token, user]);
+
+  useEffect(() => {
+    fetchOrders();
+  }, [fetchOrders]);
 
   const filteredOrders =
     activeTab === 'ALL' ? orders : orders.filter((o) => o.status === activeTab);
+
+  if (loading) {
+    return (
+      <div className="card border-0 shadow-sm p-4 text-center py-5">
+        <div className="spinner-border text-primary mx-auto" role="status">
+          <span className="visually-hidden">Đang tải...</span>
+        </div>
+        <p className="text-muted mt-2">Đang tải danh sách đơn hàng...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="card border-0 shadow-sm p-4">

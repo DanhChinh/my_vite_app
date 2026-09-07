@@ -16,9 +16,9 @@ router.get('/addresses', profileController.getAddresses);
 router.post('/addresses', profileController.addAddress);
 
 // Cart
-router.get('/cart', cartController.getCart);
-router.post('/cart/add', cartController.addToCart);
-router.post('/cart/merge', cartController.mergeGuestCart);
+// router.get('/cart', cartController.getCustomerCart);
+// router.post('/cart/add', cartController.addToCart);
+// router.post('/cart/merge', cartController.mergeGuestCart);
 
 // Orders
 router.post('/orders', orderController.createOrder);
