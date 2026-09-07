@@ -13,18 +13,18 @@ app.use(cors());         // Cho phép Frontend gọi API cross-origin
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Import các file Routes
-const publicRoutes = require('./routes/publicRoutes');
-const customerRoutes = require('./routes/customerRoutes');
-const staffRoutes = require('./routes/staffRoutes');
-const adminRoutes = require('./routes/adminRoutes');
-const cartRoutes = require('./routes/cartRoutes');
+const productRoutes = require('./routes/productRoutes');
+// const customerRoutes = require('./routes/customerRoutes');
+// const staffRoutes = require('./routes/staffRoutes');
+// const adminRoutes = require('./routes/adminRoutes');
+// const cartRoutes = require('./routes/cartRoutes');
 
 // Đăng ký các Endpoint API chính
-app.use('/api', publicRoutes);         // API công khai (/api/public-endpoint)
-app.use('/api/customer', customerRoutes); // API Khách hàng bảo mật (/api/customer/profile)
-app.use('/api/staff', staffRoutes)
-app.use('/api/admin', adminRoutes);
-app.use('/api/cart', cartRoutes);
+app.use('/api', productRoutes);         // API công khai (/api/public-endpoint)
+// app.use('/api/customer', customerRoutes); // API Khách hàng bảo mật (/api/customer/profile)
+// app.use('/api/staff', staffRoutes)
+// app.use('/api/admin', adminRoutes);
+// app.use('/api/cart', cartRoutes);
 // Route kiểm tra server hoạt động
 app.get('/', (req, res) => {
   res.json({ success: true, message: 'TechStore Pro API đang hoạt động ổn định!' });

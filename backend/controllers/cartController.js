@@ -1,19 +1,20 @@
 const pool = require('../config/database');
+const crypto = require('crypto');
+const Cart = require('../models/cartModel');
 
-// Hàm trợ giúp lấy session_id từ request (Header hoặc Query)
 const getSessionId = (req) => {
-  return req.headers['x-session-id'] || req.query.session_id || req.body.session_id;
+  return (
+    req.headers['x-session-id'] || 
+    req.body?.session_id ||            
+    req.query?.session_id ||           
+    req.cookies?.session_id            
+  );
 };
 
-/**
- * Lấy danh sách sản phẩm trong giỏ hàng (Dùng chung cho cả Customer và Guest)
- */
 exports.getCart = async (req, res) => {
   try {
-    const userId = req.user?.id; // Nếu đã đăng nhập
-    const sessionId = !userId ? getSessionId(req) : null; // Nếu chưa đăng nhập thì lấy session_id
-    console.log(userId)
-    console.log(sessionId)
+    const userId = req.user?.id; 
+    const sessionId = !userId ? getSessionId(req) : null; 
 
     if (!userId && !sessionId) {
       return res.json({
@@ -22,56 +23,20 @@ exports.getCart = async (req, res) => {
       });
     }
 
-    let query = '';
-    let queryParam = '';
-
+    let items = [];
     if (userId) {
-      query = `
-        SELECT 
-            p.id AS id,
-            p.id AS product_id,
-            ci.id AS cart_item_id, 
-            ci.quantity,
-            p.name AS name, 
-            p.price AS price, 
-            p.stock AS stock,
-            pi.image_url AS image_url,
-            (p.price * ci.quantity) AS item_total
-         FROM carts c
-         JOIN cart_items ci ON ci.cart_id = c.id
-         JOIN products p ON p.id = ci.product_id
-         LEFT JOIN product_images pi ON pi.product_id = p.id AND pi.is_primary = 1
-         WHERE c.user_id = ?
-      `;
-      queryParam = userId;
+      items = await Cart.getCartItemsByUserId(userId);
     } else {
-      query = `
-        SELECT 
-            p.id AS id,
-            p.id AS product_id,
-            ci.id AS cart_item_id, 
-            ci.quantity,
-            p.name AS name, 
-            p.price AS price, 
-            p.stock AS stock,
-            pi.image_url AS image_url,
-            (p.price * ci.quantity) AS item_total
-         FROM carts c
-         JOIN cart_items ci ON ci.cart_id = c.id
-         JOIN products p ON p.id = ci.product_id
-         LEFT JOIN product_images pi ON pi.product_id = p.id AND pi.is_primary = 1
-         WHERE c.session_id = ? AND c.user_id IS NULL
-      `;
-      queryParam = sessionId;
+      items = await Cart.getCartItemsBySessionId(sessionId);
     }
 
-    const [items] = await pool.query(query, [queryParam]);
     const totalPrice = items.reduce((sum, item) => sum + Number(item.item_total), 0);
 
     res.json({
       success: true,
       data: {
         owner_type: userId ? 'customer' : 'guest',
+        ...(sessionId && !userId ? { session_id: sessionId } : {}),
         items: items,
         total_price: totalPrice
       }
@@ -82,79 +47,73 @@ exports.getCart = async (req, res) => {
   }
 };
 
-/**
- * Thêm sản phẩm vào giỏ hàng (Dùng chung cho cả Customer và Guest)
- */
 exports.addToCart = async (req, res) => {
   const connection = await pool.getConnection();
   try {
     await connection.beginTransaction();
 
     const userId = req.user?.id;
-    const sessionId = !userId ? getSessionId(req) : null;
+    let sessionId = !userId ? getSessionId(req) : null;
 
     if (!userId && !sessionId) {
-      return res.status(400).json({ success: false, message: 'Thiếu thông tin nhận diện giỏ hàng (User hoặc Session)' });
+      sessionId = crypto.randomUUID();
     }
 
     const { product_id, quantity = 1 } = req.body;
     const qtyNum = parseInt(quantity, 10);
 
     if (!product_id || qtyNum <= 0) {
+      await connection.rollback();
       return res.status(400).json({ success: false, message: 'Dữ liệu sản phẩm hoặc số lượng không hợp lệ' });
     }
 
-    // Kiểm tra tồn kho sản phẩm
-    const [[product]] = await connection.query(`SELECT id, stock FROM products WHERE id = ?`, [product_id]);
+    const product = await Cart.findProductById(connection, product_id);
     if (!product) {
+      await connection.rollback();
       return res.status(404).json({ success: false, message: 'Sản phẩm không tồn tại' });
     }
 
     let cartId = null;
 
-    // Tìm hoặc tạo giỏ hàng dựa trên phân quyền
     if (userId) {
-      let [[cart]] = await connection.query(`SELECT id FROM carts WHERE user_id = ?`, [userId]);
+      let cart = await Cart.findUserCart(connection, userId);
       if (!cart) {
-        const [newCart] = await connection.query(`INSERT INTO carts (user_id, session_id) VALUES (?, NULL)`, [userId]);
-        cartId = newCart.insertId;
+        cartId = await Cart.createUserCart(connection, userId);
       } else {
         cartId = cart.id;
       }
     } else {
-      let [[cart]] = await connection.query(`SELECT id FROM carts WHERE session_id = ? AND user_id IS NULL`, [sessionId]);
+      let cart = await Cart.findGuestCart(connection, sessionId);
       if (!cart) {
-        const [newCart] = await connection.query(`INSERT INTO carts (user_id, session_id) VALUES (NULL, ?)`, [sessionId]);
-        cartId = newCart.insertId;
+        cartId = await Cart.createGuestCart(connection, sessionId);
       } else {
         cartId = cart.id;
       }
     }
 
-    // Kiểm tra sản phẩm đã có trong cart_items chưa
-    const [[existingItem]] = await connection.query(
-      `SELECT id, quantity FROM cart_items WHERE cart_id = ? AND product_id = ?`,
-      [cartId, product_id]
-    );
+    const existingItem = await Cart.findCartItem(connection, cartId, product_id);
 
     if (existingItem) {
       const newQty = existingItem.quantity + qtyNum;
       if (newQty > product.stock) {
+        await connection.rollback();
         return res.status(400).json({ success: false, message: 'Số lượng sản phẩm vượt quá tồn kho' });
       }
-      await connection.query(`UPDATE cart_items SET quantity = ? WHERE id = ?`, [newQty, existingItem.id]);
+      await Cart.updateCartItemQuantity(connection, existingItem.id, newQty);
     } else {
       if (qtyNum > product.stock) {
+        await connection.rollback();
         return res.status(400).json({ success: false, message: 'Số lượng sản phẩm vượt quá tồn kho' });
       }
-      await connection.query(
-        `INSERT INTO cart_items (cart_id, product_id, quantity) VALUES (?, ?, ?)`,
-        [cartId, product_id, qtyNum]
-      );
+      await Cart.addCartItem(connection, cartId, product_id, qtyNum);
     }
 
     await connection.commit();
-    res.json({ success: true, message: 'Thêm vào giỏ hàng thành công' });
+    res.json({ 
+      success: true, 
+      message: 'Thêm vào giỏ hàng thành công',
+      ...(!userId ? { session_id: sessionId } : {})
+    });
   } catch (error) {
     await connection.rollback();
     console.error("Lỗi addToCart chung:", error);
@@ -164,9 +123,6 @@ exports.addToCart = async (req, res) => {
   }
 };
 
-/**
- * Hợp nhất giỏ hàng từ Guest sang Customer khi đăng nhập
- */
 exports.mergeGuestCart = async (req, res) => {
   const connection = await pool.getConnection();
   try {
@@ -176,6 +132,7 @@ exports.mergeGuestCart = async (req, res) => {
     const session_id = getSessionId(req);
 
     if (!userId) {
+      await connection.rollback();
       return res.status(401).json({ success: false, message: 'Chưa đăng nhập' });
     }
 
@@ -184,72 +141,108 @@ exports.mergeGuestCart = async (req, res) => {
       return res.json({ success: true, message: 'Không có session_id để merge' });
     }
 
-    // Lấy giỏ hàng của guest
-    const [[guestCart]] = await connection.query(
-      `SELECT id FROM carts WHERE session_id = ? AND user_id IS NULL`,
-      [session_id]
-    );
-
+    const guestCart = await Cart.findGuestCart(connection, session_id);
     if (!guestCart) {
       await connection.commit();
       return res.json({ success: true, message: 'Không tìm thấy giỏ hàng vãng lai' });
     }
 
-    // Lấy hoặc tạo giỏ hàng của user
-    let [[userCart]] = await connection.query(`SELECT id FROM carts WHERE user_id = ?`, [userId]);
+    let userCart = await Cart.findUserCart(connection, userId);
     
     if (!userCart) {
-      // Nếu user chưa có giỏ, tận dụng luôn giỏ hàng của guest bằng cách gán user_id và xóa session_id
-      await connection.query(
-        `UPDATE carts SET user_id = ?, session_id = NULL WHERE id = ?`,
-        [userId, guestCart.id]
-      );
+      await Cart.convertGuestCartToUser(connection, userId, guestCart.id);
       await connection.commit();
       return res.json({ success: true, message: 'Đã chuyển giỏ hàng guest thành giỏ hàng user thành công' });
     }
 
-    // Nếu user đã có sẵn giỏ hàng riêng, gộp các item từ guest sang user
-    const [guestItems] = await connection.query(
-      `SELECT product_id, quantity FROM cart_items WHERE cart_id = ?`,
-      [guestCart.id]
-    );
+    const guestItems = await Cart.getGuestCartItemsForMerge(connection, guestCart.id);
 
     for (const item of guestItems) {
-      const [[product]] = await connection.query(`SELECT stock FROM products WHERE id = ?`, [item.product_id]);
+      const product = await Cart.findProductById(connection, item.product_id);
       const maxStock = product ? product.stock : 999999;
 
-      const [[userItem]] = await connection.query(
-        `SELECT id, quantity FROM cart_items WHERE cart_id = ? AND product_id = ?`,
-        [userCart.id, item.product_id]
-      );
+      const userItem = await Cart.findCartItem(connection, userCart.id, item.product_id);
 
       if (userItem) {
         let newQty = userItem.quantity + item.quantity;
         if (newQty > maxStock) newQty = maxStock;
-
-        await connection.query(
-          `UPDATE cart_items SET quantity = ? WHERE id = ?`,
-          [newQty, userItem.id]
-        );
+        await Cart.updateCartItemQuantity(connection, userItem.id, newQty);
       } else {
         let finalQty = item.quantity;
         if (finalQty > maxStock) finalQty = maxStock;
-
-        await connection.query(
-          `INSERT INTO cart_items (cart_id, product_id, quantity) VALUES (?, ?, ?)`,
-          [userCart.id, item.product_id, finalQty]
-        );
+        await Cart.addCartItem(connection, userCart.id, item.product_id, finalQty);
       }
     }
 
-    // Xóa giỏ hàng guest cũ sau khi gộp xong
-    await connection.query(`DELETE FROM carts WHERE id = ?`, [guestCart.id]);
+    await Cart.deleteCart(connection, guestCart.id);
 
     await connection.commit();
     res.json({ success: true, message: 'Đã hợp nhất giỏ hàng thành công' });
   } catch (error) {
     await connection.rollback();
     console.error("Lỗi mergeGuestCart chung:", error);
+    res.status(500).json({ success: false, message: error.message });
+  } finally {
+    connection.release();
+  }
+};
+
+exports.updateGuestCartItem = async (req, res) => {
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+
+    const sessionId = getSessionId(req);
+    const { cart_item_id, quantity } = req.body;
+    const qtyNum = parseInt(quantity, 10);
+
+    if (!sessionId || !cart_item_id || qtyNum <= 0) {
+      await connection.rollback();
+      return res.status(400).json({ success: false, message: 'Dữ liệu không hợp lệ' });
+    }
+
+    const cartItem = await Cart.findGuestCartItemWithStock(connection, cart_item_id, sessionId);
+    if (!cartItem) {
+      await connection.rollback();
+      return res.status(404).json({ success: false, message: 'Sản phẩm trong giỏ không tồn tại' });
+    }
+
+    if (qtyNum > cartItem.stock) {
+      await connection.rollback();
+      return res.status(400).json({ success: false, message: 'Số lượng vượt quá tồn kho' });
+    }
+
+    await Cart.updateCartItemQuantity(connection, cart_item_id, qtyNum);
+
+    await connection.commit();
+    res.json({ success: true, message: 'Cập nhật giỏ hàng thành công' });
+  } catch (error) {
+    await connection.rollback();
+    res.status(500).json({ success: false, message: error.message });
+  } finally {
+    connection.release();
+  }
+};
+
+exports.removeGuestCartItem = async (req, res) => {
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+
+    const sessionId = getSessionId(req);
+    const { cart_item_id } = req.params;
+
+    if (!sessionId) {
+      await connection.rollback();
+      return res.status(400).json({ success: false, message: 'Session ID không tồn tại' });
+    }
+
+    await Cart.removeGuestCartItem(connection, cart_item_id, sessionId);
+
+    await connection.commit();
+    res.json({ success: true, message: 'Đã xóa sản phẩm khỏi giỏ hàng' });
+  } catch (error) {
+    await connection.rollback();
     res.status(500).json({ success: false, message: error.message });
   } finally {
     connection.release();
