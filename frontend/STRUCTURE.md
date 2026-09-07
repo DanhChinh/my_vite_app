@@ -34,9 +34,7 @@ frontend/src/
 │   │   └── ProtectedRoute.jsx   # Bảo vệ route theo role
 │   │
 │   ├── shared/             # Shared UI components
-│   │   ├── Navbar.jsx           # Thanh điều hướng
-│   │   ├── ProductCard.jsx      # Card sản phẩm
-│   │   └── CategoryList.jsx     # Danh sách danh mục
+│   │   └── Navbar.jsx           # Thanh điều hướng
 │   │
 │   └── modules/            # Admin management modules
 │       ├── ProductManager.jsx    # CRUD sản phẩm
@@ -92,7 +90,7 @@ frontend/src/
 
 ### 6. **components/**
 - **common/**: Utility components (ProtectedRoute, etc.)
-- **shared/**: Reusable UI components (Navbar, ProductCard, etc.)
+- **shared/**: Reusable UI components (Navbar, etc.)
 - **modules/**: Feature-specific components (admin management)
 
 ### 7. **features/** - Tính năng/Pages

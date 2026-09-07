@@ -1,22 +1,32 @@
-// server/routes/customerRoutes.js
 const express = require('express');
 const router = express.Router();
-const customerController = require('../controllers/customerController');
-const { verifyToken } = require('../middlewares/authMiddleware');
+const profileController = require('../controllers/customer/profileController');
+const cartController = require('../controllers/customer/cartController');
+const orderController = require('../controllers/customer/orderController');
+const reviewController = require('../controllers/customer/reviewController');
+const { verifyToken, verifyCustomer } = require('../middlewares/authMiddleware'); // Middleware xác thực đăng nhập
 
-// Tất cả các route bên dưới đều bắt buộc phải qua middleware `verifyToken` để bảo mật
-// Đường dẫn thực tế sẽ là: /api/customer/profile
+// Áp dụng middleware bảo vệ tất cả các route của customer
+router.use(verifyToken, verifyCustomer);
 
-// Lấy thông tin hồ sơ
-router.get('/profile', verifyToken, customerController.getProfile);
+// Profile & Địa chỉ
+router.get('/profile', profileController.getProfile);
+router.put('/profile', profileController.updateProfile);
+router.get('/addresses', profileController.getAddresses);
+router.post('/addresses', profileController.addAddress);
 
-// Cập nhật thông tin hồ sơ
-router.put('/profile', verifyToken, customerController.updateProfile);
+// Cart
+router.get('/cart', cartController.getCart);
+router.post('/cart/add', cartController.addToCart);
+router.post('/cart/merge', cartController.mergeGuestCart);
 
-// Lấy danh sách sản phẩm
-router.get('/products', verifyToken, customerController.getProducts);
+// Orders
+router.post('/orders', orderController.createOrder);
+router.get('/orders', orderController.getMyOrders);
+router.get('/orders/:id', orderController.getOrderDetail);
+router.put('/orders/:id/cancel', orderController.cancelOrder);
 
-// Tạo đơn hàng
-router.post('/orders', verifyToken, customerController.createOrder);
+// Reviews
+router.post('/reviews', reviewController.createReview);
 
 module.exports = router;

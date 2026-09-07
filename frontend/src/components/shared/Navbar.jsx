@@ -1,57 +1,53 @@
-// src/components/Navbar.jsx
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
+import { useToast } from '../../context/ToastProvider';
+import Login from '../public/LoginModal';
 
 export default function Navbar() {
+  const { user, role, isAuthenticated, logout } = useAuth();
   const { cartCount } = useCart();
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [userRole, setUserRole] = useState('');
+  const { showToast } = useToast();
+
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isLoginOpen, setIsLoginOpen] = useState(false);
+
   const navigate = useNavigate();
   const location = useLocation();
 
-  const syncUser = () => {
-    const token = localStorage.getItem('token');
-    const role = localStorage.getItem('role');
-    setIsLoggedIn(Boolean(token));
-    setUserRole(token ? role || 'customer' : '');
-  };
-
-  useEffect(() => {
-    syncUser();
-    window.addEventListener('storage', syncUser);
-    return () => window.removeEventListener('storage', syncUser);
-  }, []);
-
+  // Tự động đóng menu điều hướng khi đổi đường dẫn (trên mobile)
   useEffect(() => {
     setIsMenuOpen(false);
   }, [location.pathname]);
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('role');
-    setIsLoggedIn(false);
-    setUserRole('');
+    logout();
     setIsMenuOpen(false);
-    alert('Đăng xuất thành công!');
-    navigate('/login');
+    showToast('Đăng xuất thành công!', 'success');
+    navigate('/');
   };
 
   const roleLabels = {
     customer: 'Khách hàng',
     staff: 'Nhân viên',
-    admin: 'Quản trị viên'
+    admin: 'Quản trị viên',
   };
 
-  const isActive = (path) => location.pathname === path || location.pathname.startsWith(`${path}/`);
-  const linkClass = (path) => `nav-link ${isActive(path) ? 'active fw-bold text-warning' : ''}`;
+  const isActive = (path) =>
+    path === '/'
+      ? location.pathname === '/'
+      : location.pathname === path || location.pathname.startsWith(`${path}/`);
+
+  const linkClass = (path) =>
+    `nav-link ${isActive(path) ? 'active fw-bold text-warning' : ''}`;
 
   return (
     <nav className="navbar navbar-expand-lg navbar-dark bg-dark px-4 shadow-sm mb-4">
       <div className="container-fluid">
         <Link to="/" className="navbar-brand fw-bold text-decoration-none">
-          <i className="fa-solid fa-mobile-screen-button me-2 text-warning"></i>TechStore Pro
+          <i className="fa-solid fa-mobile-screen-button me-2 text-warning"></i>
+          TechStore Pro
         </Link>
 
         <button
@@ -67,34 +63,51 @@ export default function Navbar() {
         <div className={`collapse navbar-collapse ${isMenuOpen ? 'show' : ''}`}>
           <ul className="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-4">
             <li className="nav-item">
-              <Link className={linkClass('/')} to="/">Trang chủ</Link>
+              <Link className={linkClass('/')} to="/">
+                Trang chủ
+              </Link>
             </li>
-            {(!isLoggedIn || userRole === 'customer') && (
+
+            {role === 'customer' && (
               <li className="nav-item">
-                <Link className={linkClass('/cart')} to="/cart">Giỏ hàng</Link>
+                <Link
+                  className={linkClass('/customer/')}
+                  to="/customer/"
+                >
+                  <i className="fa-solid fa-user me-2" />
+                  Cá nhân
+                </Link>
+              </li>
+            )}Login
+
+            {role === 'staff' && (
+              <li className="nav-item">
+                <Link className={linkClass('/staff')} to="/staff">
+                  <i className="fa-solid fa-clipboard-list me-2" />
+                  Khu vực làm việc
+                </Link>
               </li>
             )}
-            {userRole === 'customer' && (
+
+            {role === 'admin' && (
               <li className="nav-item">
-                <Link className={linkClass('/customer/dashboard')} to="/customer/dashboard">Tài khoản</Link>
-              </li>
-            )}
-            {userRole === 'staff' && (
-              <li className="nav-item">
-                <Link className={linkClass('/staff')} to="/staff">Khu vực làm việc</Link>
-              </li>
-            )}
-            {userRole === 'admin' && (
-              <li className="nav-item">
-                <Link className={linkClass('/admin')} to="/admin">Trang quản trị</Link>
+                <Link className={linkClass('/admin')} to="/admin">
+                  <i className="fa-solid fa-gauge-high me-2" />
+                  Quản trị
+                </Link>
               </li>
             )}
           </ul>
 
           <div className="d-flex align-items-lg-center gap-3">
-            {(!isLoggedIn || userRole === 'customer') && (
-              <Link to="/cart" className="btn btn-outline-light position-relative btn-sm">
-                <i className="fa-solid fa-cart-shopping me-1"></i>Giỏ hàng
+            {/* Giỏ hàng chỉ hiện với Khách hàng hoặc Khách vãng lai */}
+            {(!isAuthenticated || role === 'customer') && (
+              <Link
+                to="/cart"
+                className="btn btn-outline-light position-relative btn-sm"
+              >
+                <i className="fa-solid fa-cart-shopping me-1"></i>
+                Giỏ hàng
                 {cartCount > 0 && (
                   <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
                     {cartCount}
@@ -103,27 +116,52 @@ export default function Navbar() {
               </Link>
             )}
 
-            {isLoggedIn ? (
-              <div className="dropdown">
-                <button className="btn btn-outline-light btn-sm dropdown-toggle fw-bold" type="button" data-bs-toggle="dropdown">
-                  <i className="fa-solid fa-user-circle me-1 text-warning"></i>{roleLabels[userRole] || 'Tài khoản'}
+            {isAuthenticated ? (
+              <div className="d-flex align-items-center gap-2">
+                <Link
+                  className="account-summary text-decoration-none text-light d-flex align-items-center gap-2"
+                  to={
+                    role === 'customer'
+                      ? '/customer'
+                      : role === 'admin'
+                      ? '/admin'
+                      : '/staff'
+                  }
+                >
+                  <span className="account-avatar bg-secondary rounded-circle px-2 py-1">
+                    <i className="fa-solid fa-user" />
+                  </span>
+                  <span className="account-details d-flex flex-column" style={{ fontSize: '0.85rem' }}>
+                    <strong>{user?.fullName || roleLabels[role] || 'Tài khoản'}</strong>
+                    <small className="text-muted">{user?.email || 'Thông tin cá nhân'}</small>
+                  </span>
+                </Link>
+
+                <button
+                  type="button"
+                  className="btn btn-outline-danger btn-sm ms-2"
+                  onClick={handleLogout}
+                  title="Đăng xuất"
+                >
+                  <i className="fa-solid fa-right-from-bracket me-1" />
+                  Đăng xuất
                 </button>
-                <ul className="dropdown-menu dropdown-menu-end shadow border-0 mt-2">
-                  {userRole === 'customer' && <li><Link className="dropdown-item py-2" to="/customer/dashboard"><i className="fa-solid fa-id-card me-2 text-muted"></i>Hồ sơ cá nhân</Link></li>}
-                  {userRole === 'admin' && <li><Link className="dropdown-item py-2" to="/admin"><i className="fa-solid fa-gauge me-2 text-muted"></i>Trang quản trị</Link></li>}
-                  {userRole === 'staff' && <li><Link className="dropdown-item py-2" to="/staff"><i className="fa-solid fa-boxes-stacked me-2 text-muted"></i>Khu vực làm việc</Link></li>}
-                  <li><hr className="dropdown-divider" /></li>
-                  <li><button className="dropdown-item py-2 text-danger fw-bold" onClick={handleLogout}><i className="fa-solid fa-right-from-bracket me-2"></i>Đăng xuất</button></li>
-                </ul>
               </div>
             ) : (
-              <Link to="/login" className="btn btn-light btn-sm fw-bold">
-                <i className="fa-solid fa-right-to-bracket me-1"></i>Đăng nhập
-              </Link>
+              <button
+                type="button"
+                className="btn btn-light btn-sm fw-bold"
+                onClick={() => setIsLoginOpen(true)}
+              >
+                <i className="fa-solid fa-right-to-bracket me-1"></i>
+                Đăng nhập
+              </button>
             )}
           </div>
         </div>
       </div>
+
+      {isLoginOpen && <Login modal onClose={() => setIsLoginOpen(false)} />}
     </nav>
   );
 }

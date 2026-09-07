@@ -5,7 +5,7 @@ exports.verifyToken = (req, res, next) => {
   // Lấy token từ header Authorization (Định dạng: Bearer <token>)
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
-
+  
   if (!token) {
     return res.status(401).json({ 
       success: false, 
@@ -38,3 +38,17 @@ exports.verifyAdmin = (req, res, next) => {
     return res.status(403).json({ success: false, message: 'Từ chối truy cập! Yêu cầu quyền Quản trị viên (Admin).' });
   }
 };
+
+exports.verifyRole = (...roles) => (req, res, next) => {
+  if (req.user && roles.includes(req.user.role)) {
+    return next();
+  }
+
+  return res.status(403).json({
+    success: false,
+    message: 'Bạn không có quyền truy cập chức năng này.'
+  });
+};
+
+exports.verifyStaff = exports.verifyRole('staff', 'admin');
+exports.verifyCustomer = exports.verifyRole('customer');

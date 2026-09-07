@@ -1,28 +1,50 @@
 // server/routes/adminRoutes.js
 const express = require('express');
 const router = express.Router();
-const adminController = require('../controllers/adminController');
-const { verifyToken, verifyAdmin } = require('../middlewares/authMiddleware');
-const { uploadProductImagesMiddleware } = require('../middlewares/uploadMiddleware');
+// const { uploadProductImagesMiddleware } = require('../middlewares/uploadMiddleware');
+// const reviewController = require('../controllers/reviewController');
 
+const { verifyToken, verifyAdmin } = require('../middlewares/authMiddleware');
 router.use(verifyToken, verifyAdmin);
 
-// Các route bên dưới ĐÃ CÓ tiền tố /admin nên không cần lặp lại chữ /admin nữa
-router.get('/statistics', adminController.getStatistics);
-router.get('/products', adminController.getProducts);
+const customerController = require('../controllers/admin/customerController');
+const staffController = require('../controllers/admin/staffController');
+const productController = require('../controllers/admin/productController');
+const categoryController = require('../controllers/admin/categoryController');
+const partnerController = require('../controllers/admin/partnerController');
+const statisticController = require('../controllers/admin/statisticController');
 
-router.get('/staff', adminController.getStaffs);
-router.post('/staff', adminController.createStaff);
-router.put('/staff/:id/reset-password', adminController.resetStaffPassword);
-router.delete('/staff/:id', adminController.deleteStaff);
+// Quản lý Khách hàng
+router.get('/customers', customerController.getCustomers);
+router.get('/customers/:id', customerController.getCustomerById);
+router.patch('/users/:id/active', customerController.toggleUserActiveStatus);
 
-router.get('/partners', adminController.getPartners);
-router.post('/partners', adminController.createPartner);
-router.put('/partners/:id', adminController.updatePartner);
-router.delete('/partners/:id', adminController.deletePartner);
+// Quản lý Nhân viên
+router.get('/staffs', staffController.getStaffs);
+router.post('/staffs', staffController.createStaff);
+router.put('/staffs/:id', staffController.updateStaff);
 
-router.post('/products', uploadProductImagesMiddleware, adminController.createProduct);
-router.put('/products/:id', uploadProductImagesMiddleware, adminController.updateProduct);
-router.delete('/products/:id', adminController.deleteProduct);
+//test api ok here
+
+// Quản lý Sản phẩm
+router.get('/products', productController.getProducts);
+router.post('/products', productController.createProduct);
+router.put('/products/:id', productController.updateProduct);
+router.delete('/products/:id', productController.deleteProduct);
+
+// Quản lý Danh mục
+router.get('/categories', categoryController.getCategories);
+router.post('/categories', categoryController.createCategory);
+router.put('/categories/:id', categoryController.updateCategory);
+router.delete('/categories/:id', categoryController.deleteCategory);
+
+// Quản lý Đối tác
+router.get('/partners', partnerController.getPartners);
+router.post('/partners', partnerController.createPartner);
+router.put('/partners/:id', partnerController.updatePartner);
+router.delete('/partners/:id', partnerController.deletePartner);
+
+// Báo cáo Thống kê
+router.get('/statistics/dashboard', statisticController.getDashboardSummary);
 
 module.exports = router;

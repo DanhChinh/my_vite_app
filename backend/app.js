@@ -13,15 +13,15 @@ app.use(cors());         // Cho phép Frontend gọi API cross-origin
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Import các file Routes
-const guestRoutes = require('./routes/guestRoutes');
+const publicRoutes = require('./routes/publicRoutes');
 const customerRoutes = require('./routes/customerRoutes');
 const staffRoutes = require('./routes/staffRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 
 // Đăng ký các Endpoint API chính
-app.use('/api', guestRoutes);         // API công khai (/api/public-endpoint)
+app.use('/api', publicRoutes);         // API công khai (/api/public-endpoint)
 app.use('/api/customer', customerRoutes); // API Khách hàng bảo mật (/api/customer/profile)
-app.use('/api', staffRoutes)
+app.use('/api/staff', staffRoutes)
 app.use('/api/admin', adminRoutes);
 // Route kiểm tra server hoạt động
 app.get('/', (req, res) => {

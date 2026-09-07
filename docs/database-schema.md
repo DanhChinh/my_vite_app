@@ -60,6 +60,12 @@ Stores product images and identifies the primary image.
 | image_url | VARCHAR | image path or URL |
 | is_primary | TINYINT / BOOLEAN | `1` for the primary image, otherwise `0` |
 
+### orders
+Stores a submitted checkout and its lifecycle status (`pending`, `confirmed`, `shipping`, `completed`, `cancelled`).
+
+### order_items
+Stores immutable product quantities and prices captured at checkout.
+
 ### carts
 Stores a cart associated with a user. The current checkout flow creates a cart record; this schema does not contain a separate order record.
 
@@ -92,6 +98,21 @@ Stores staff-specific profile information.
 | position | VARCHAR | staff position |
 | created_at | TIMESTAMP | audit field |
 
+### customer_addresses
+Stores multiple delivery addresses for a customer and identifies the default address.
+
+### password_resets
+Stores hashed, expiring, one-time password reset tokens. Plain reset tokens must never be stored.
+
+### partner_staff
+Associates staff members with the partners they manage.
+
+### product_reviews
+Stores product ratings and comments. Reviews can be moderated through `pending`, `approved`, `rejected`, and `hidden` statuses. A completed order and its product line verify a purchase.
+
+### product_review_images
+Stores optional images attached to product reviews.
+
 ### partners
 Stores supplier and partner information.
 
@@ -112,6 +133,9 @@ Stores supplier and partner information.
 - one `cart` can contain many `cart_items`
 - each `cart_item` belongs to one `product`
 - one `product` can have many `product_images`
+- one `customer` can have many `customer_addresses`
+- one `product` can belong to one `partner`
+- one `partner` can have many assigned staff members
 
 ## Suggested constraints
 
@@ -125,4 +149,4 @@ In a production-grade implementation, these relationships should be enforced wit
 
 ## Notes
 
-The current schema does not persist order status, payment history, or shipping history. Add dedicated `orders` and `order_items` tables before implementing those workflows.
+The migration in `backend/migrations/001_orders.sql` adds persistent order status, payment method, notes, and checkout line items.
