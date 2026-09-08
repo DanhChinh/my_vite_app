@@ -1,72 +1,49 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import publicService from '../services/publicService';
-import customerService from '../services/customerService';
-import adminService from '../services/adminService'; // Nhớ import adminService (nếu có)
-import { getGuestSessionId, clearGuestSessionId } from '../utils/auth';
-
-import {
-  saveAuthToken,
-  clearAuthToken,
-  getUserRole,
-} from '../utils/auth';
+import { authService } from '../services/authService';
+import { cartService } from '../services/cartService';
+import { saveAuthData, clearAuthData, getToken, getUser, getUserRole } from '../utils/auth';
+import { getGuestCart, clearGuestCart } from '../utils/guest';
 
 const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
-  const [token, setToken] = useState(() => localStorage.getItem('token') || null);
-  const [role, setRole] = useState(() => getUserRole() || 'guest');
-  const [user, setUser] = useState(null);
+  const [token, setToken] = useState(() => getToken());
+  const [role, setRole] = useState(() => getUserRole());
+  const [user, setUser] = useState(() => getUser());
   const [loading, setLoading] = useState(true);
-  console.log('AuthProvider initialized with token:', token, 'role:', role);
 
-  // 1. Tải thông tin Profile phù hợp theo Role
+  // 1. Lấy thông tin Profile người dùng
   const fetchUserProfile = useCallback(async () => {
     if (!token) {
+      setRole(null);
       setUser(null);
       setLoading(false);
       return;
     }
 
     try {
-      let result;
-
-      // Phân nhánh API gọi theo vai trò (Role)
-      if (role === 'customer') {
-        result = await customerService.getProfile();
-      } else if (role === 'admin' && adminService?.getProfile) {
-        result = await adminService.getProfile();
-      } else {
-        // Nếu là Admin/Staff nhưng chưa có API Profile riêng, giữ nguyên dữ liệu cơ bản từ Token/State
-        setLoading(false);
-        return;
-      }
-      // console.log('fetchUserProfile result:', result);
-
+      const result = await authService.getProfile();
       if (result && result.success) {
         setUser(result.data);
-      } else if (result && result.status === 401) {
-        // Chỉ logout khi Token hết hạn hoặc không hợp lệ (401)
-        logout();
       }
     } catch (error) {
       console.error('Lỗi khi tải thông tin người dùng:', error);
-      if (error?.response?.status === 401) {
+      if (error?.message?.includes('401')) {
         logout();
       }
     } finally {
       setLoading(false);
     }
-  }, [token, role]);
+  }, [token]);
 
   useEffect(() => {
     fetchUserProfile();
   }, [fetchUserProfile]);
 
-// 2. Xử lý Đăng nhập
+  // 2. Xử lý Đăng nhập
   const login = async (username, password) => {
     try {
-      const result = await publicService.login({ username, password });
-      console.log("publicService.login",result)
+      const result = await authService.login({ username, password });
 
       if (result.success) {
         const newToken = result.token;
@@ -77,22 +54,19 @@ export function AuthProvider({ children }) {
         };
 
         // Lưu thông tin xác thực vào Storage & State
-        saveAuthToken(newToken, userRole);
+        saveAuthData(newToken, userData);
         setToken(newToken);
         setRole(userRole);
         setUser(userData);
 
-        // ==========================================
-        // BỔ SUNG: Hợp nhất giỏ hàng vãng lai (Guest Cart)
-        // ==========================================
+        // Hợp nhất giỏ hàng từ localStorage (guestCart) vào database[cite: 2]
         if (userRole === 'customer') {
-          const guestSessionId = getGuestSessionId();
-          if (guestSessionId) {
+          const guestItems = getGuestCart();
+          if (guestItems && guestItems.length > 0) {
             try {
-              const mergeRes = await customerService.mergeGuestCart(guestSessionId);
-              console.log("customerService.mergeGuestCart", mergeRes)
+              const mergeRes = await cartService.mergeCart(guestItems);
               if (mergeRes.success) {
-                clearGuestSessionId(); // Xóa session vãng lai sau khi merge thành công
+                clearGuestCart();
               }
             } catch (mergeErr) {
               console.error('Lỗi tự động hợp nhất giỏ hàng khi đăng nhập:', mergeErr);
@@ -103,23 +77,23 @@ export function AuthProvider({ children }) {
         return { success: true, role: userRole };
       }
 
-      return { 
-        success: false, 
-        message: result.message || 'Đăng nhập thất bại' 
+      return {
+        success: false,
+        message: result.message || 'Đăng nhập thất bại'
       };
     } catch (error) {
       console.error('Lỗi đăng nhập:', error);
-      return { 
-        success: false, 
-        message: error.message || 'Không thể kết nối đến máy chủ' 
+      return {
+        success: false,
+        message: error.message || 'Không thể kết nối đến máy chủ'
       };
     }
   };
+
   // 3. Xử lý Đăng ký
   const register = async (userData) => {
     try {
-      const result = await publicService.register(userData);
-      return result;
+      return await authService.register(userData);
     } catch (error) {
       return { success: false, message: error.message || 'Không thể kết nối đến máy chủ' };
     }
@@ -127,34 +101,41 @@ export function AuthProvider({ children }) {
 
   // 4. Xử lý Đăng xuất
   const logout = () => {
-    clearAuthToken();
+    clearAuthData();
     setToken(null);
     setRole('guest');
     setUser(null);
   };
 
-  // 5. Cập nhật thông tin User
+  // 5. Cập nhật thông tin User State
   const updateUserProfile = (updatedData) => {
-    setUser((prev) => (prev ? { ...prev, ...updatedData } : null));
+    setUser((prev) => {
+      const newUser = prev ? { ...prev, ...updatedData } : null;
+      if (newUser && token) saveAuthData(token, newUser);
+      return newUser;
+    });
   };
 
   return (
-    <AuthContext.Provider
-      value={{
-        token,
-        role,
-        user,
-        loading,
-        isAuthenticated: !!token,
-        login,
-        register,
-        logout,
-        updateUserProfile,
-        refreshProfile: fetchUserProfile,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
+      <AuthContext.Provider
+        value={{
+          // --- DỮ LIỆU / TRẠNG THÁI (Variables & States) ---
+          token,                     // String: JWT Token
+          role,                      // String: Vai trò ('guest', 'customer', 'admin')
+          user,                      // Object: Thông tin user hiện tại
+          isLoading: loading,        // Boolean: Đang tải dữ liệu hay không (dùng prefix 'is')
+          isAuthenticated: !!token,  // Boolean: Đã đăng nhập hay chưa (dùng prefix 'is')
+
+          // --- HÀM / HÀNH ĐỘNG (Functions & Handlers) ---
+          handleLogin: login,                 // Hàm thực hiện đăng nhập
+          handleRegister: register,           // Hàm thực hiện đăng ký
+          handleLogout: logout,               // Hàm thực hiện đăng xuất
+          handleUpdateUserProfile: updateUserProfile, // Hàm cập nhật user state
+          handleRefreshProfile: fetchUserProfile,     // Hàm gọi lại API lấy profile
+        }}
+      >
+        {children}
+      </AuthContext.Provider>
   );
 }
 

@@ -1,6 +1,12 @@
 const pool = require('../config/database');
 
 const Product = {
+  async getAllCategories() {
+    const [categories] = await pool.query(
+      'SELECT * FROM categories ORDER BY name ASC'
+    );
+    return categories;
+  },
   // 1. Đếm tổng số sản phẩm theo bộ lọc
   async countProducts(whereClause, params) {
     const [[{ total }]] = await pool.query(

@@ -2,7 +2,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const pool = require('../config/database');
-const User = require('../models/userModel');
+const User = require('../models/authModel');
 
 exports.login = async (req, res) => {
   try {

@@ -1,3 +1,4 @@
+// models/orderModel.js
 const pool = require('../config/database');
 
 const Order = {
@@ -5,7 +6,6 @@ const Order = {
   async createOrder(connection, orderData, items) {
     const { userId, shippingAddress, paymentMethod, note, totalPrice } = orderData;
 
-    // 1. Tạo đơn hàng chính
     const [orderResult] = await connection.query(
       `INSERT INTO orders (user_id, shipping_address, payment_method, note, status, total_price)
        VALUES (?, ?, ?, ?, 'pending', ?)`,
@@ -13,7 +13,6 @@ const Order = {
     );
     const orderId = orderResult.insertId;
 
-    // 2. Tạo chi tiết đơn hàng (Snapshot sản phẩm và giá)
     const itemValues = items.map(item => [
       orderId,
       item.product_id,
@@ -31,6 +30,15 @@ const Order = {
     return orderId;
   },
 
+  // Trừ tồn kho sản phẩm (chạy trong transaction)
+  async decreaseStock(connection, productId, quantity) {
+    const [result] = await connection.query(
+      'UPDATE products SET stock = stock - ? WHERE id = ? AND stock >= ?',
+      [quantity, productId, quantity]
+    );
+    return result.affectedRows > 0;
+  },
+
   // Lấy lịch sử đơn hàng của cá nhân Khách hàng
   async getOrdersByUser(userId) {
     const [orders] = await pool.query(
@@ -43,7 +51,29 @@ const Order = {
     return orders;
   },
 
-  // Lấy chi tiết đơn hàng cho Admin / Staff (bao gồm ghi chú nội bộ & thông tin người đặt)
+  // Lấy chi tiết đơn hàng dành riêng cho Khách hàng
+  async getOrderDetailsForCustomer(userId, orderId) {
+    const [orders] = await pool.query(
+      `SELECT id, shipping_address, payment_method, note, status, total_price, created_at
+       FROM orders 
+       WHERE id = ? AND user_id = ?`,
+      [orderId, userId]
+    );
+
+    if (orders.length === 0) return null;
+
+    const [items] = await pool.query(
+      'SELECT product_id, product_name, quantity, unit_price FROM order_items WHERE order_id = ?',
+      [orderId]
+    );
+
+    return {
+      ...orders[0],
+      items
+    };
+  },
+
+  // Lấy chi tiết đơn hàng cho Admin / Staff
   async getOrderDetailsForAdmin(orderId) {
     const [orders] = await pool.query(
       `SELECT o.*, u.username, u.email, u.phone
@@ -79,6 +109,32 @@ const Order = {
         [status, orderId]
       );
     }
+  },
+
+  // Dành cho Admin: Lấy danh sách tất cả đơn hàng (có lọc theo trạng thái)
+  async getAllOrders(status = null) {
+    let query = `
+      SELECT o.id, o.status, o.total_price, o.payment_method, o.created_at, u.username, u.email 
+      FROM orders o
+      JOIN users u ON o.user_id = u.id
+    `;
+    const params = [];
+    if (status) {
+      query += ` WHERE o.status = ?`;
+      params.push(status);
+    }
+    query += ` ORDER BY o.created_at DESC`;
+
+    const [orders] = await pool.query(query, params);
+    return orders;
+  },
+
+  // Hoàn lại tồn kho khi hủy đơn hàng (chạy trong transaction)
+  async increaseStock(connection, productId, quantity) {
+    await connection.query(
+      'UPDATE products SET stock = stock + ? WHERE id = ?',
+      [quantity, productId]
+    );
   }
 };
 

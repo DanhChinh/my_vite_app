@@ -2,6 +2,22 @@ const Product = require('../models/productModel');
 const pool = require('../config/database');
 
 const productController = {
+  async getCategories(req, res) {
+    try {
+      const categories = await Product.getAllCategories();
+
+      res.json({
+        success: true,
+        data: categories
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false, 
+        message: 'Lỗi máy chủ', 
+        error: error.message 
+      });
+    }
+  },
   // [GET] /api/products
   async getProducts(req, res) {
     try {

@@ -4,27 +4,22 @@ const cors = require('cors');
 const path = require('path');
 require('dotenv').config();
 
-// Khởi tạo ứng dụng Express
 const app = express();
 
-// Middleware
 app.use(express.json()); // Đọc dữ liệu dạng JSON từ request body
 app.use(cors());         // Cho phép Frontend gọi API cross-origin
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Import các file Routes
+const authRoutes = require('./routes/authRoutes');
+const cartRoutes = require('./routes/cartRoutes');
+const orderRoutes = require('./routes/orderRoutes');
 const productRoutes = require('./routes/productRoutes');
-// const customerRoutes = require('./routes/customerRoutes');
-// const staffRoutes = require('./routes/staffRoutes');
-// const adminRoutes = require('./routes/adminRoutes');
-// const cartRoutes = require('./routes/cartRoutes');
 
-// Đăng ký các Endpoint API chính
-app.use('/api', productRoutes);         // API công khai (/api/public-endpoint)
-// app.use('/api/customer', customerRoutes); // API Khách hàng bảo mật (/api/customer/profile)
-// app.use('/api/staff', staffRoutes)
-// app.use('/api/admin', adminRoutes);
-// app.use('/api/cart', cartRoutes);
+// Khai báo các endpoint theo chuẩn RESTful
+app.use('/api', authRoutes);         
+app.use('/api', cartRoutes);     
+app.use('/api', productRoutes);  
+app.use('/api', orderRoutes);     
 // Route kiểm tra server hoạt động
 app.get('/', (req, res) => {
   res.json({ success: true, message: 'TechStore Pro API đang hoạt động ổn định!' });
