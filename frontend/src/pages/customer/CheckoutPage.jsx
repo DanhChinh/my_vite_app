@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useCart } from '../../context/CartContext';
-import { useAuth } from '../../context/AuthContext';
-import { CUSTOMER_ENDPOINTS } from '../../constants/api';
-import customerService from '../../services/customerService';
+import { useCart } from '../../contexts/CartContext';
+import { useAuth } from '../../contexts/AuthContext';
+import { addressService } from '../../services/addressService';
+import { orderService } from '../../services/orderService';
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
@@ -45,12 +45,17 @@ export default function CheckoutPage() {
     }
 
     if (token) {
-      customerService.getAddresses()
+      addressService.getAddresses()
         .then((res) => {
-          if (res.success && res.data && res.data.length > 0) {
-            setAddresses(res.data);
+          const responseData = res?.data || res;
+          const addressList = Array.isArray(responseData) 
+            ? responseData 
+            : (responseData?.data || []);
+
+          if (addressList.length > 0) {
+            setAddresses(addressList);
             // Tìm địa chỉ mặc định hoặc lấy cái đầu tiên
-            const defaultAddr = res.data.find(item => item.is_default === 1) || res.data[0];
+            const defaultAddr = addressList.find(item => Number(item.is_default) === 1) || addressList[0];
             setSelectedAddressId(defaultAddr.id);
             setFormData(prev => ({
               ...prev,
@@ -64,7 +69,7 @@ export default function CheckoutPage() {
     }
   }, [user, token]);
 
-  // Xử lý khi người dùng chọn một địa chỉ có sẵn trong sổ địa chỉ
+  // Xử lý khi chọn một địa chỉ có sẵn trong sổ địa chỉ
   const handleSelectSavedAddress = (e) => {
     const addressId = e.target.value;
     setSelectedAddressId(addressId);
@@ -82,7 +87,6 @@ export default function CheckoutPage() {
         phone: found.phone || prev.phone,
         address: found.address_line || ''
       }));
-      // Xóa lỗi địa chỉ nếu có
       if (errors.address) setErrors(prev => ({ ...prev, address: '' }));
       if (errors.fullName) setErrors(prev => ({ ...prev, fullName: '' }));
       if (errors.phone) setErrors(prev => ({ ...prev, phone: '' }));
@@ -98,8 +102,6 @@ export default function CheckoutPage() {
   };
 
   const validateForm = () => {
-    console.log(formData);
-    
     const newErrors = {};
     if (!formData.fullName.trim()) newErrors.fullName = 'Vui lòng nhập họ và tên';
     if (!formData.phone.trim()) {
@@ -113,6 +115,7 @@ export default function CheckoutPage() {
     return Object.keys(newErrors).length === 0;
   };
 
+  // 3. Đặt hàng qua orderService
   const handleSubmitOrder = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
@@ -125,37 +128,37 @@ export default function CheckoutPage() {
     setLoading(true);
 
     try {
-      const response = await fetch(CUSTOMER_ENDPOINTS.CREATE_ORDER, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+      const orderPayload = {
+        customer_info: {
+          full_name: formData.fullName,
+          email: formData.email,
+          phone: formData.phone,
+          address: formData.address,
+          note: formData.note
         },
-        body: JSON.stringify({
-          customer_info: {
-            full_name: formData.fullName,
-            email: formData.email,
-            phone: formData.phone,
-            address: formData.address,
-            note: formData.note
-          },
-          payment_method: formData.paymentMethod
-        })
-      });
+        payment_method: formData.paymentMethod,
+        items: cartItems.map(item => ({
+          product_id: item.product_id || item.id,
+          quantity: item.quantity,
+          price: item.price
+        })),
+        total_amount: cartTotal
+      };
 
-      const result = await response.json();
+      const res = await orderService.createOrder(orderPayload);
+      const responseData = res?.data || res;
 
-      if (result.success) {
+      if (res?.success || responseData?.success || responseData?.id) {
         clearCart();
         alert('Đặt hàng thành công!');
-        const orderId = result.order_id || result.data?.id || '';
-        navigate(`/order-success/${orderId}`);
+        const orderId = responseData?.order_id || responseData?.id || responseData?.data?.id || '';
+        navigate(`/customer/orders/${orderId}`);
       } else {
-        alert(result.message || 'Đặt hàng thất bại. Vui lòng thử lại!');
+        alert(responseData?.message || 'Đặt hàng thất bại. Vui lòng thử lại!');
       }
     } catch (error) {
       console.error('Lỗi khi thanh toán:', error);
-      alert('Có lỗi xảy ra khi kết nối máy chủ!');
+      alert(error.message || 'Có lỗi xảy ra khi kết nối máy chủ!');
     } finally {
       setLoading(false);
     }
@@ -190,7 +193,6 @@ export default function CheckoutPage() {
         <div className="row g-4">
           {/* Cột trái: Thông tin nhận hàng & Thanh toán */}
           <div className="col-lg-7">
-            {/* Card thông tin nhận hàng */}
             <div className="card border-0 shadow-sm p-4 mb-4">
               <div className="d-flex justify-content-between align-items-center mb-3">
                 <h4 className="card-title text-primary fw-bold mb-0">Thông tin giao hàng</h4>
@@ -199,7 +201,6 @@ export default function CheckoutPage() {
                 </Link>
               </div>
 
-              {/* Chọn nhanh từ Sổ địa chỉ nếu có */}
               {addresses.length > 0 && (
                 <div className="mb-3 p-3 bg-light rounded-3 border">
                   <label className="form-label fw-semibold small text-muted mb-1">
@@ -212,7 +213,7 @@ export default function CheckoutPage() {
                   >
                     {addresses.map((addr) => (
                       <option key={addr.id} value={addr.id}>
-                        {addr.recipient_name} - {addr.phone} ({addr.address_line}) {addr.is_default === 1 ? '[Mặc định]' : ''}
+                        {addr.recipient_name} - {addr.phone} ({addr.address_line}) {Number(addr.is_default) === 1 ? '[Mặc định]' : ''}
                       </option>
                     ))}
                     <option value="other">+ Nhập địa chỉ khác...</option>
@@ -292,7 +293,7 @@ export default function CheckoutPage() {
               </div>
             </div>
 
-            {/* Card phương thức thanh toán */}
+            {/* Phương thức thanh toán */}
             <div className="card border-0 shadow-sm p-4">
               <h4 className="card-title mb-3 text-primary fw-bold">Phương thức thanh toán</h4>
 
@@ -309,7 +310,7 @@ export default function CheckoutPage() {
                 <label className="form-check-label fw-semibold" htmlFor="paymentCOD">
                   Thanh toán khi nhận hàng (COD)
                 </label>
-                <div className="text-muted small">Thanh toán bằng tiền mặt khi shiper giao hàng đến.</div>
+                <div className="text-muted small">Thanh toán bằng tiền mặt khi shipper giao hàng đến.</div>
               </div>
 
               <div className="form-check">
@@ -330,7 +331,7 @@ export default function CheckoutPage() {
             </div>
           </div>
 
-          {/* Cột phải: Tóm tắt danh sách sản phẩm & Tổng tiền */}
+          {/* Cột phải: Tóm tắt đơn hàng */}
           <div className="col-lg-5">
             <div className="card border-0 shadow-sm p-4 position-sticky" style={{ top: '20px' }}>
               <h4 className="card-title mb-3 text-primary fw-bold">
@@ -348,7 +349,7 @@ export default function CheckoutPage() {
                         src={item.image_url || item.primary_image || 'https://via.placeholder.com/60'}
                         alt={item.name || item.product_name}
                         style={{ width: '60px', height: '60px', objectFit: 'cover' }}
-                        className="rounded me-3"
+                        className="rounded me-3 border"
                       />
                       <div className="flex-grow-1 me-2">
                         <h6 className="mb-0 text-truncate" style={{ maxWidth: '180px' }}>

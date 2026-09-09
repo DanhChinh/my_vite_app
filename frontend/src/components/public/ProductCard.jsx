@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { useCart } from '../../context/CartContext';
-import { useToast } from '../../context/ToastProvider';
+import { useCart } from '../../contexts/CartContext';
+import { useToast } from '../../contexts/ToastProvider';
 import { formatCurrency } from '../../utils/formatters';
 
 export default function ProductCard({ product }) {
@@ -9,11 +9,18 @@ export default function ProductCard({ product }) {
   const { showToast } = useToast();
 
   const handleAddToCart = async () => {
-    const res = await addToCart(product, 1);
-    if (res?.success) {
-      showToast(`Đã thêm "${product.name}" vào giỏ hàng!`, 'success');
-    } else {
-      showToast(res?.message || 'Có lỗi xảy ra', 'danger');
+    if (!product) return;
+
+    try {
+      const quantity = 1;
+      // 1. Gom dữ liệu truyền thành 1 Object duy nhất
+      await addToCart({ product, quantity });
+      
+      // 2. Thông báo thành công qua Toast
+      showToast(`Đã thêm ${quantity} sản phẩm "${product.name}" vào giỏ hàng!`, 'success');
+    } catch (error) {
+      console.error('Lỗi thêm giỏ hàng:', error);
+      showToast(error.message || 'Thêm vào giỏ hàng thất bại, vui lòng thử lại!', 'danger');
     }
   };
 

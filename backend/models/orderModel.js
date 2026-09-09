@@ -13,13 +13,20 @@ const Order = {
     );
     const orderId = orderResult.insertId;
 
-    const itemValues = items.map(item => [
-      orderId,
-      item.product_id,
-      item.product_name,
-      item.quantity,
-      item.unit_price
-    ]);
+    // Ép kiểu an toàn trước khi map vào SQL
+    const itemValues = items.map(item => {
+      const price = Number(item.unit_price);
+      const safePrice = isNaN(price) ? 0 : price;
+      const safeName = item.product_name || 'Sản phẩm';
+
+      return [
+        orderId,
+        item.product_id,
+        safeName,
+        item.quantity,
+        safePrice
+      ];
+    });
 
     await connection.query(
       `INSERT INTO order_items (order_id, product_id, product_name, quantity, unit_price)
@@ -29,7 +36,6 @@ const Order = {
 
     return orderId;
   },
-
   // Trừ tồn kho sản phẩm (chạy trong transaction)
   async decreaseStock(connection, productId, quantity) {
     const [result] = await connection.query(

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { publicService } from '../../services/publicService';
-import { useCart } from '../../context/CartContext';
-import { useToast } from '../../context/ToastProvider';
+import { productService } from '../../services/productService';
+import { useCart } from '../../contexts/CartContext';
+import { useToast } from '../../contexts/ToastProvider';
 import { formatCurrency } from '../../utils/formatters';
 import ProductCard from '../../components/public/ProductCard';
 
@@ -20,20 +20,23 @@ export default function ProductDetailPage() {
     const fetchProductData = async () => {
       setLoading(true);
       try {
-        const res = await publicService.getProductDetail(id);
-        const productData = res?.data;
+        const response = await productService.getProductDetail(id);
+        // Bóc tách dữ liệu linh hoạt (hỗ trợ cả response.data hoặc response trực tiếp)
+        const productData = response?.data || response;
         setProduct(productData);
 
         // Tải sản phẩm liên quan theo danh mục
         if (productData?.category_id) {
-          const relatedRes = await publicService.getProducts({
+          const relatedRes = await productService.getProducts({
             category: productData.category_id,
             limit: 4
           });
-          setRelatedProducts((relatedRes?.data?.items || []).filter((item) => item.id !== productData.id));
+          const items = relatedRes?.items || relatedRes?.data?.items || (Array.isArray(relatedRes) ? relatedRes : []);
+          setRelatedProducts(items.filter((item) => Number(item.id) !== Number(productData.id)));
         }
       } catch (err) {
         console.error('Lỗi tải chi tiết sản phẩm:', err);
+        setProduct(null);
       } finally {
         setLoading(false);
       }
@@ -42,13 +45,19 @@ export default function ProductDetailPage() {
     fetchProductData();
   }, [id]);
 
+  // ✅ Sửa lại hàm thêm vào giỏ hàng đồng bộ với CartContext & Object-based
   const handleAddToCart = async () => {
     if (!product) return;
-    const res = await addToCart(product, quantity);
-    if (res?.success) {
-      showToast(`Đã thêm ${quantity} sản phẩm vào giỏ hàng!`, 'success');
-    } else {
-      showToast(res?.message || 'Có lỗi xảy ra', 'danger');
+
+    try {
+      // 1. Gom dữ liệu truyền thành 1 Object duy nhất
+      await addToCart({ product, quantity });
+      
+      // 2. Thông báo thành công qua Toast
+      showToast(`Đã thêm ${quantity} sản phẩm "${product.name}" vào giỏ hàng!`, 'success');
+    } catch (error) {
+      console.error('Lỗi thêm giỏ hàng:', error);
+      showToast(error.message || 'Thêm vào giỏ hàng thất bại, vui lòng thử lại!', 'danger');
     }
   };
 
@@ -65,8 +74,8 @@ export default function ProductDetailPage() {
   if (!product) {
     return (
       <div className="container py-5 text-center">
-        <h4>Sản phẩm không tồn tại hoặc đã bị xóa.</h4>
-        <Link to="/" className="btn btn-warning mt-3">Quay lại Trang Chủ</Link>
+        <h4 className="fw-bold text-secondary">Sản phẩm không tồn tại hoặc đã bị xóa.</h4>
+        <Link to="/" className="btn btn-warning mt-3 fw-semibold">Quay lại Trang Chủ</Link>
       </div>
     );
   }
@@ -76,18 +85,18 @@ export default function ProductDetailPage() {
       {/* Breadcrumb */}
       <nav aria-label="breadcrumb">
         <ol className="breadcrumb">
-          <li className="breadcrumb-item"><Link to="/">Trang chủ</Link></li>
-          <li className="breadcrumb-item active">{product.name}</li>
+          <li className="breadcrumb-item"><Link to="/" className="text-decoration-none">Trang chủ</Link></li>
+          <li className="breadcrumb-item active" aria-current="page">{product.name}</li>
         </ol>
       </nav>
 
       {/* Chi tiết sản phẩm */}
-      <div className="card border-0 shadow-sm rounded-3 p-4 mb-5">
+      <div className="card border-0 shadow-sm rounded-3 p-4 mb-5 bg-white">
         <div className="row g-4">
           {/* Ảnh sản phẩm */}
           <div className="col-md-5 text-center">
             <img
-              src={product.image_url || 'https://via.placeholder.com/400'}
+              src={product.image_url || product.image || 'https://via.placeholder.com/400'}
               alt={product.name}
               className="img-fluid rounded-3 object-fit-cover w-100"
               style={{ maxHeight: '400px' }}
@@ -117,6 +126,7 @@ export default function ProductDetailPage() {
               <span className="fw-semibold">Số lượng:</span>
               <div className="input-group" style={{ width: '130px' }}>
                 <button
+                  type="button"
                   className="btn btn-outline-secondary"
                   onClick={() => setQuantity((q) => Math.max(1, q - 1))}
                 >
@@ -124,11 +134,12 @@ export default function ProductDetailPage() {
                 </button>
                 <input
                   type="text"
-                  className="form-control text-center"
+                  className="form-control text-center bg-white"
                   value={quantity}
                   readOnly
                 />
                 <button
+                  type="button"
                   className="btn btn-outline-secondary"
                   onClick={() => setQuantity((q) => q + 1)}
                 >
@@ -139,7 +150,11 @@ export default function ProductDetailPage() {
 
             {/* Nút hành động */}
             <div className="d-flex gap-3 mt-auto">
-              <button className="btn btn-warning btn-lg fw-bold flex-grow-1" onClick={handleAddToCart}>
+              <button 
+                type="button" 
+                className="btn btn-warning btn-lg fw-bold flex-grow-1 text-dark" 
+                onClick={handleAddToCart}
+              >
                 <i className="fa-solid fa-cart-plus me-2"></i>Thêm Vào Giỏ Hàng
               </button>
             </div>

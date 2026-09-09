@@ -11,7 +11,7 @@ exports.getCart = async (req, res) => {
         message: 'Chưa đăng nhập'
       });
     }
-
+    console.log("getCart with id:", userId);
     const items = await Cart.getCartItemsByUserId(userId);
     const totalPrice = items.reduce((sum, item) => sum + Number(item.item_total), 0);
 

@@ -6,5 +6,6 @@ export const authService = {
   login: (credentials) => axiosInstance.post(AUTH_ENDPOINTS.LOGIN, credentials),
   register: (userData) => axiosInstance.post(AUTH_ENDPOINTS.REGISTER, userData),
   changePassword: (data) => axiosInstance.post(AUTH_ENDPOINTS.CHANGE_PASSWORD, data),
-  getProfile: () => axiosInstance.get(AUTH_ENDPOINTS.PROFILE)
+  getProfile: () => axiosInstance.get(AUTH_ENDPOINTS.PROFILE),
+  getAddresses: () => axiosInstance.get(AUTH_ENDPOINTS.ADDRESSES)
 };

@@ -3,7 +3,6 @@ import { useSearchParams } from 'react-router-dom';
 import BannerCarousel from '../../components/public/BannerCarousel';
 import CategoryFilter from '../../components/public/CategoryFilter';
 import ProductCard from '../../components/public/ProductCard';
-import { categoryService } from '../../services/categoryService';
 import { productService } from '../../services/productService';
 
 export default function HomePage() {
@@ -29,7 +28,7 @@ export default function HomePage() {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const res = await categoryService.getCategories();
+        const res = await productService.getCategories();
         setCategories(res?.data || []);
       } catch (err) {
         console.error('Lỗi tải danh mục:', err);
@@ -53,8 +52,7 @@ export default function HomePage() {
           sort: sortBy
         };
         const res = await productService.getProducts(params);
-        console.log(res)
-        setProducts(res?.items || []);
+        setProducts(res?.data.items || []);
         setTotalPages(res?.totalPages || 1);
       } catch (err) {
         console.error('Lỗi tải sản phẩm:', err);

@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../context/AuthContext';
-import { useToast } from '../../context/ToastProvider';
-import customerService from '../../services/customerService'; // Import service vừa tạo
+import { useToast } from '../../contexts/ToastProvider';
+import {addressService} from '../../services/addressService'; // Import service vừa tạo
 
 export default function AddressPage() {
-  const { token } = useAuth();
   const { showToast } = useToast() || { showToast: console.log };
 
   // Danh sách địa chỉ từ Database (ban đầu để mảng rỗng)
@@ -38,7 +36,7 @@ export default function AddressPage() {
   const fetchAddresses = async () => {
     try {
       setLoading(true);
-      const response = await customerService.getAddresses();
+      const response = await addressService.getAddresses();
       if (response.success) {
         setAddresses(response.data);
       }

@@ -1,6 +1,6 @@
 // services/orderService.js
 import axiosInstance from './axiosInstance';
-import { ORDER_ENDPOINTS } from '../constants/api';
+import { ORDER_ENDPOINTS, ADMIN_ENDPOINTS } from '../constants/api';
 
 export const orderService = {
   // Khách hàng

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useToast } from '../../context/ToastProvider';
-import publicService from '../../services/publicService'; // Nhập service đăng ký public
+import { useToast } from '../../contexts/ToastProvider';
+import {authService} from '../../services/authService'; 
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -55,8 +55,8 @@ export default function RegisterPage() {
     };
 
     try {
-      // Gọi qua publicService.register thay cho fetch trực tiếp
-      const response = await publicService.register(payload);
+      // Gọi qua authService.register thay cho fetch trực tiếp
+      const response = await authService.register(payload);
 
       if (response?.data?.success || response?.success) {
         showToast('Đăng ký tài khoản thành công! Vui lòng đăng nhập.', 'success');

@@ -2,7 +2,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const pool = require('../config/database');
-const User = require('../models/authModel');
+const User = require('../models/userModel');
 
 exports.login = async (req, res) => {
   try {
@@ -24,13 +24,19 @@ exports.login = async (req, res) => {
 
     const token = jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1d' });
 
-    res.json({
-      success: true,
-      message: 'Đăng nhập thành công!',
-      token,
-      role: user.role,
-      username: user.username
-    });
+    if (user.is_active){
+      delete user.password;
+      delete user.is_active;
+  
+      res.json({
+        success: true,
+        message: 'Đăng nhập thành công!',
+        token,
+        user
+      });
+    }else{
+      return res.status(403).json({ success: false, message: 'Tài khoản chưa được kích hoạt. Vui lòng liên hệ quản trị viên.' });
+    }
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -174,3 +180,80 @@ exports.register = async (req, res) => {
 //     connection.release();
 //   }
 // };
+
+
+
+
+
+// [GET] /api/auth/profile - Lấy thông tin cá nhân
+exports.getProfile = async (req, res) => {
+  try {
+    // 1. Lấy userId từ Token qua req.user
+    const userId = req.user.id;
+    console.log("userId", userId)
+
+    // 2. Truy vấn dữ liệu từ CSDL
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'Tài khoản không tồn tại trên hệ thống!'
+      });
+    }
+
+    // 3. Phản hồi dữ liệu cho Frontend
+    res.status(200).json({
+      success: true,
+      data: user
+    });
+  } catch (error) {
+    console.error('Lỗi khi lấy thông tin profile:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi hệ thống, không thể lấy thông tin cá nhân.'
+    });
+  }
+};
+
+// [PUT] /api/auth/profile - Cập nhật thông tin cá nhân
+exports.updateProfile = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { full_name, phone, address, avatar } = req.body;
+
+    // Lấy thông tin hiện tại để giữ nguyên dữ liệu cũ nếu client không truyền
+    const currentProfile = await User.findByLoginIdentifier(userId);
+    if (!currentProfile) {
+      return res.status(404).json({ success: false, message: 'Tài khoản không tồn tại!' });
+    }
+
+    const updatedData = {
+      full_name: full_name !== undefined ? full_name : currentProfile.full_name,
+      phone: phone !== undefined ? phone : currentProfile.phone,
+      address: address !== undefined ? address : currentProfile.address,
+      avatar: avatar !== undefined ? avatar : currentProfile.avatar
+    };
+
+    const isUpdated = await User.updateProfile(userId, updatedData);
+
+    if (!isUpdated) {
+      return res.status(400).json({ success: false, message: 'Cập nhật thất bại!' });
+    }
+
+    // Lấy lại thông tin mới nhất sau khi cập nhật
+    const newProfile = await User.findByLoginIdentifier(userId);
+
+    res.status(200).json({
+      success: true,
+      message: 'Cập nhật thông tin cá nhân thành công!',
+      data: newProfile
+    });
+  } catch (error) {
+    console.error('Lỗi khi cập nhật profile:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi hệ thống, không thể cập nhật thông tin.'
+    });
+  }
+};

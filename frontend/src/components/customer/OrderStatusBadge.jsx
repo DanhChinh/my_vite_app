@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function CustomerSidebar() {
   const { user, logout } = useAuth();
@@ -32,7 +32,7 @@ export default function CustomerSidebar() {
       {/* Menu Điều hướng */}
       <div className="nav flex-column nav-pills gap-1">
         <NavLink
-          to="/customer/dashboard"
+          to="/dashboard"
           className={({ isActive }) =>
             `nav-link d-flex align-items-center gap-2 py-2 px-3 rounded-2 ${
               isActive ? 'bg-primary text-white fw-semibold' : 'text-dark'
@@ -44,7 +44,7 @@ export default function CustomerSidebar() {
         </NavLink>
 
         <NavLink
-          to="/customer/orders"
+          to="/orders"
           className={({ isActive }) =>
             `nav-link d-flex align-items-center gap-2 py-2 px-3 rounded-2 ${
               isActive ? 'bg-primary text-white fw-semibold' : 'text-dark'
@@ -56,7 +56,7 @@ export default function CustomerSidebar() {
         </NavLink>
 
         <NavLink
-          to="/customer/profile"
+          to="/profile"
           className={({ isActive }) =>
             `nav-link d-flex align-items-center gap-2 py-2 px-3 rounded-2 ${
               isActive ? 'bg-primary text-white fw-semibold' : 'text-dark'
@@ -68,7 +68,7 @@ export default function CustomerSidebar() {
         </NavLink>
 
         <NavLink
-          to="/customer/addresses"
+          to="/addresses"
           className={({ isActive }) =>
             `nav-link d-flex align-items-center gap-2 py-2 px-3 rounded-2 ${
               isActive ? 'bg-primary text-white fw-semibold' : 'text-dark'

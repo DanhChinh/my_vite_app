@@ -29,7 +29,7 @@ export default function LoginModal({ isOpen, onClose }) {
         aria-modal="true"
         aria-labelledby="login-title"
       >
-        <LoginForm showCloseButton onClose={onClose} onSuccess={onClose} />
+        <LoginForm onSuccess={onClose} showCloseButton={false} onClose={onClose} />
       </div>
     </div>
   );

@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
-import { useCart } from '../../context/CartContext';
-import { useToast } from '../../context/ToastProvider';
-import Login from '../public/LoginModal';
+import { useAuth } from '../../contexts/AuthContext';
+import { useCart } from '../../contexts/CartContext';
+import { useToast } from '../../contexts/ToastProvider';
+import LoginModal from '../public/LoginModal';
 
 export default function Navbar() {
   const { user, role, isAuthenticated, logout } = useAuth();
@@ -71,8 +71,8 @@ export default function Navbar() {
             {role === 'customer' && (
               <li className="nav-item">
                 <Link
-                  className={linkClass('/customer/')}
-                  to="/customer/"
+                  className={linkClass('/orders')}
+                  to="/orders"
                 >
                   <i className="fa-solid fa-user me-2" />
                   Cá nhân
@@ -122,7 +122,7 @@ export default function Navbar() {
                   className="account-summary text-decoration-none text-light d-flex align-items-center gap-2"
                   to={
                     role === 'customer'
-                      ? '/customer'
+                      ? '/orders'
                       : role === 'admin'
                       ? '/admin'
                       : '/staff'
@@ -161,7 +161,7 @@ export default function Navbar() {
         </div>
       </div>
 
-      {isLoginOpen && <Login isOpen={isLoginOpen} onClose={() => setIsLoginOpen(false)} />}
+      {isLoginOpen && <LoginModal isOpen={isLoginOpen} onClose={() => setIsLoginOpen(false)} />}
     </nav>
   );
 }

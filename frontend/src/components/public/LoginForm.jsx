@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function LoginForm({ onSuccess, showCloseButton = false, onClose }) {
   const [username, setUsername] = useState('');
@@ -9,9 +9,10 @@ export default function LoginForm({ onSuccess, showCloseButton = false, onClose 
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
+  // 1. Đổi 'login' thành 'login' theo đúng AuthContext
   const { login } = useAuth();
 
-  const handleLogin = async (event) => {
+  const onSubmit = async (event) => {
     event.preventDefault();
     setError('');
 
@@ -24,15 +25,16 @@ export default function LoginForm({ onSuccess, showCloseButton = false, onClose 
     setLoading(true);
 
     try {
-      const result = await login(cleanUsername, password);
+      // 2. Gọi login. Nếu thành công, hàm trả về object user
+      // Nếu thất bại (400, 401, 500...), axiosInstance tự throw Error nhảy xuống khối catch
+      const user = await login({ username: cleanUsername, password });
 
-      if (result.success) {
-        if (onSuccess) onSuccess();
-      } else {
-        setError(result.message || 'Tên đăng nhập hoặc mật khẩu không chính xác!');
+      if (onSuccess) {
+        onSuccess();
       }
     } catch (err) {
-      setError(err.message || 'Có lỗi xảy ra, vui lòng thử lại.');
+      // err ở đây chính là chuỗi message do axiosInstance quăng ra
+      setError(typeof err === 'string' ? err : err.message || 'Tên đăng nhập hoặc mật khẩu không chính xác!');
     } finally {
       setLoading(false);
     }
@@ -70,7 +72,7 @@ export default function LoginForm({ onSuccess, showCloseButton = false, onClose 
 
       {error && <div className="alert alert-danger py-2 small" role="alert">{error}</div>}
 
-      <form onSubmit={handleLogin}>
+      <form onSubmit={onSubmit}>
         <div className="mb-3">
           <label className="form-label fw-semibold small">Tên đăng nhập / Username</label>
           <input

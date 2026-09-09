@@ -26,7 +26,14 @@ export const AUTH_ENDPOINTS = {
   REGISTER: '/register' ,
   CHANGE_PASSWORD: '/change-password',
   PROFILE: '/profile',
+  ADDRESSES: '/addresses',
 };
+
+export const ADDRESS_ENDPOINTS = {
+    BASE: '/addresses',
+    DETAIL: (id) => `/addresses/${id}`,
+    SET_DEFAULT: (id) => `/addresses/${id}/default`,
+  };
 
 export const ADMIN_ENDPOINTS = {
   STATISTICS: '/admin/statistics',

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
-import customerService from '../../services/customerService';
+import { useAuth } from '../../contexts/AuthContext';
+import { orderService } from '../../services/orderService';
 
 export default function OrderHistoryPage() {
   const { token, user } = useAuth();
@@ -9,7 +9,7 @@ export default function OrderHistoryPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('ALL');
 
-  // Hàm gọi API lấy danh sách đơn hàng thực tế từ Backend
+  // Hàm gọi API lấy danh sách đơn hàng từ orderService
   const fetchOrders = useCallback(async () => {
     if (!token || user?.role !== 'customer') {
       setLoading(false);
@@ -18,56 +18,56 @@ export default function OrderHistoryPage() {
 
     try {
       setLoading(true);
-      const result = await customerService.getOrders()
-      if (result.success) {
-        // Chuẩn hóa dữ liệu trả về từ Database
-        const rawOrders = result.data?.orders || (Array.isArray(result.data) ? result.data : []);
-        
-        const formattedOrders = rawOrders.map(order => {
-          let statusText = 'Chờ xác nhận';
-          let badgeClass = 'bg-warning text-dark';
+      const res = await orderService.getMyOrders();
+      
+      // Bóc tách dữ liệu linh hoạt tùy theo cấu trúc response của axiosInstance
+      const responseData = res?.data || res;
+      const rawOrders = Array.isArray(responseData)
+        ? responseData
+        : responseData?.orders || responseData?.data || [];
 
-          switch (order.status) {
-            case 'PENDING':
-              statusText = 'Chờ xác nhận';
-              badgeClass = 'bg-warning text-dark';
-              break;
-            case 'PROCESSING':
-              statusText = 'Đang xử lý';
-              badgeClass = 'bg-info text-dark';
-              break;
-            case 'DELIVERING':
-              statusText = 'Đang giao hàng';
-              badgeClass = 'bg-primary';
-              break;
-            case 'DELIVERED':
-              statusText = 'Đã giao hàng';
-              badgeClass = 'bg-success';
-              break;
-            case 'CANCELLED':
-              statusText = 'Đã hủy';
-              badgeClass = 'bg-danger';
-              break;
-            default:
-              statusText = order.status;
-              badgeClass = 'bg-secondary';
-          }
+      const formattedOrders = rawOrders.map((order) => {
+        let statusText = 'Chờ xác nhận';
+        let badgeClass = 'bg-warning text-dark';
 
-          return {
-            id: order.id,
-            date: order.created_at ? order.created_at.split('T')[0] : '',
-            total: Number(order.total_price || order.total || 0),
-            status: order.status,
-            statusText,
-            badgeClass,
-            itemsCount: order.items_count || order.itemsCount || 0
-          };
-        });
+        switch (order.status) {
+          case 'PENDING':
+            statusText = 'Chờ xác nhận';
+            badgeClass = 'bg-warning text-dark';
+            break;
+          case 'PROCESSING':
+            statusText = 'Đang xử lý';
+            badgeClass = 'bg-info text-dark';
+            break;
+          case 'DELIVERING':
+            statusText = 'Đang giao hàng';
+            badgeClass = 'bg-primary';
+            break;
+          case 'DELIVERED':
+            statusText = 'Đã giao hàng';
+            badgeClass = 'bg-success';
+            break;
+          case 'CANCELLED':
+            statusText = 'Đã hủy';
+            badgeClass = 'bg-danger';
+            break;
+          default:
+            statusText = order.status;
+            badgeClass = 'bg-secondary';
+        }
 
-        setOrders(formattedOrders);
-      } else {
-        setOrders([]);
-      }
+        return {
+          id: order.id,
+          date: order.created_at ? order.created_at.split('T')[0] : '',
+          total: Number(order.total_price || order.total || 0),
+          status: order.status,
+          statusText,
+          badgeClass,
+          itemsCount: order.items_count || order.itemsCount || order.items?.length || 0
+        };
+      });
+
+      setOrders(formattedOrders);
     } catch (error) {
       console.error('Lỗi khi tải lịch sử đơn hàng:', error);
       setOrders([]);
@@ -99,7 +99,7 @@ export default function OrderHistoryPage() {
       <h4 className="fw-bold mb-3 pb-2 border-bottom">Đơn hàng của tôi</h4>
 
       {/* Tabs Filter */}
-      <ul className="nav nav-tabs mb-4">
+      <ul className="nav nav-tabs mb-4 flex-nowrap overflow-auto">
         <li className="nav-item">
           <button
             className={`nav-link ${activeTab === 'ALL' ? 'active fw-bold' : 'text-dark'}`}
@@ -118,10 +118,34 @@ export default function OrderHistoryPage() {
         </li>
         <li className="nav-item">
           <button
+            className={`nav-link ${activeTab === 'PROCESSING' ? 'active fw-bold' : 'text-dark'}`}
+            onClick={() => setActiveTab('PROCESSING')}
+          >
+            Đang xử lý
+          </button>
+        </li>
+        <li className="nav-item">
+          <button
+            className={`nav-link ${activeTab === 'DELIVERING' ? 'active fw-bold' : 'text-dark'}`}
+            onClick={() => setActiveTab('DELIVERING')}
+          >
+            Đang giao
+          </button>
+        </li>
+        <li className="nav-item">
+          <button
             className={`nav-link ${activeTab === 'DELIVERED' ? 'active fw-bold' : 'text-dark'}`}
             onClick={() => setActiveTab('DELIVERED')}
           >
             Đã giao
+          </button>
+        </li>
+        <li className="nav-item">
+          <button
+            className={`nav-link ${activeTab === 'CANCELLED' ? 'active fw-bold' : 'text-dark'}`}
+            onClick={() => setActiveTab('CANCELLED')}
+          >
+            Đã hủy
           </button>
         </li>
       </ul>
@@ -139,7 +163,7 @@ export default function OrderHistoryPage() {
               <div className="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
                 <div>
                   <span className="fw-bold me-2">Mã đơn: #{order.id}</span>
-                  <small className="text-muted">({order.date})</small>
+                  {order.date && <small className="text-muted">({order.date})</small>}
                 </div>
                 <span className={`badge ${order.badgeClass}`}>{order.statusText}</span>
               </div>
@@ -150,7 +174,7 @@ export default function OrderHistoryPage() {
                     {order.total.toLocaleString('vi-VN')} đ
                   </span>
                   <Link
-                    to={`/customer/orders/${order.id}`}
+                    to={`/orders/${order.id}`}
                     className="btn btn-outline-primary btn-sm"
                   >
                     Xem chi tiết

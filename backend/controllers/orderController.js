@@ -9,87 +9,136 @@ exports.createOrder = async (req, res) => {
     await connection.beginTransaction();
 
     const userId = req.user?.id;
-    const { shippingAddress, paymentMethod, note } = req.body;
+    const { customer_info, payment_method, items, total_amount } = req.body;
 
     if (!userId) {
       await connection.rollback();
       return res.status(401).json({ success: false, message: 'Chưa đăng nhập' });
     }
 
-    if (!shippingAddress || !paymentMethod) {
+    if (!customer_info || !customer_info.address || !payment_method ||!customer_info.phone) {
       await connection.rollback();
-      return res.status(400).json({ success: false, message: 'Thiếu thông tin giao hàng hoặc phương thức thanh toán' });
-    }
-
-    // 1. Lấy giỏ hàng của user
-    const cartItems = await Cart.getCartItemsByUserId(userId);
-    if (!cartItems || cartItems.length === 0) {
-      await connection.rollback();
-      return res.status(400).json({ success: false, message: 'Giỏ hàng trống' });
-    }
-
-    // 2. Kiểm tra tồn kho và chuẩn bị dữ liệu snapshot
-    let totalPrice = 0;
-    const orderItemsData = [];
-
-    for (const item of cartItems) {
-      const product = await Cart.findProductById(connection, item.product_id);
-      if (!product || product.stock < item.quantity) {
-        await connection.rollback();
-        return res.status(400).json({ 
-          success: false, 
-          message: `Sản phẩm "${item.product_name}" không đủ số lượng trong kho` 
-        });
-      }
-
-      // Trừ tồn kho
-      const success = await Order.decreaseStock(connection, item.product_id, item.quantity);
-      if (!success) {
-        await connection.rollback();
-        return res.status(400).json({ success: false, message: `Lỗi cập nhật tồn kho cho sản phẩm ${item.product_name}` });
-      }
-
-      const itemTotal = Number(item.price) * item.quantity;
-      totalPrice += itemTotal;
-
-      orderItemsData.push({
-        product_id: item.product_id,
-        product_name: item.product_name,
-        quantity: item.quantity,
-        unit_price: item.price
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Thiếu thông tin giao hàng hoặc phương thức thanh toán' 
       });
     }
 
-    // 3. Tạo đơn hàng và order_items
-    const orderId = await Order.createOrder(connection, {
-      userId,
-      shippingAddress,
-      paymentMethod,
-      note,
-      totalPrice
-    }, orderItemsData);
+    const shippingAddress = [
+      customer_info.full_name,
+      customer_info.phone,
+      customer_info.address
+    ].filter(Boolean).join(' | ');
 
-    // 4. Xóa giỏ hàng sau khi đặt thành công
+    const orderNote = customer_info.note || '';
+
+    let checkoutItems = Array.isArray(items) && items.length > 0 ? items : [];
+    if (checkoutItems.length === 0) {
+      const cartItems = await Cart.getCartItemsByUserId(userId);
+      if (!cartItems || cartItems.length === 0) {
+        await connection.rollback();
+        return res.status(400).json({ success: false, message: 'Giỏ hàng của bạn đang trống' });
+      }
+      checkoutItems = cartItems;
+    }
+
+    let calculatedTotalPrice = 0;
+    const orderItemsData = [];
+
+    for (const item of checkoutItems) {
+      const productId = item.product_id || item.id;
+      const quantity = Number(item.quantity) || 1;
+
+      // 1. Lấy sản phẩm từ DB
+      const product = await Cart.findProductById(connection, productId);
+
+      if (!product) {
+        await connection.rollback();
+        return res.status(400).json({ 
+          success: false, 
+          message: `Sản phẩm (ID: ${productId}) không tồn tại` 
+        });
+      }
+
+      if (product.stock < quantity) {
+        await connection.rollback();
+        return res.status(400).json({ 
+          success: false, 
+          message: `Sản phẩm "${product.name || product.product_name}" không đủ số lượng trong kho` 
+        });
+      }
+
+      // 2. Trừ tồn kho
+      const decreaseSuccess = await Order.decreaseStock(connection, productId, quantity);
+      if (!decreaseSuccess) {
+        await connection.rollback();
+        return res.status(400).json({ 
+          success: false, 
+          message: `Lỗi cập nhật tồn kho cho sản phẩm` 
+        });
+      }
+
+      // 3. XỬ LÝ AN TOÀN GIÁ & TÊN SẢN PHẨM (Sửa lỗi NaN và NULL ở đây)
+      // Kiểm tra lần lượt các field giá có thể có trong DB / Body
+      const rawPrice = product.price ?? product.unit_price ?? item.price ?? 0;
+      const unitPrice = isNaN(Number(rawPrice)) ? 0 : Number(rawPrice);
+
+      // Kiểm tra tên sản phẩm
+      const productName = product.name || product.product_name || item.product_name || item.name || 'Sản phẩm';
+
+      calculatedTotalPrice += unitPrice * quantity;
+
+      orderItemsData.push({
+        product_id: productId,
+        product_name: productName,
+        quantity: quantity,
+        unit_price: unitPrice
+      });
+    }
+
+    const finalTotalPrice = calculatedTotalPrice > 0 ? calculatedTotalPrice : Number(total_amount || 0);
+
+    // 4. Tạo Order
+    const orderId = await Order.createOrder(
+      connection,
+      {
+        userId,
+        shippingAddress,
+        paymentMethod: payment_method.toLowerCase(),
+        note: orderNote,
+        totalPrice: finalTotalPrice
+      },
+      orderItemsData
+    );
+
+    // 5. Xóa giỏ hàng
     const userCart = await Cart.findUserCart(connection, userId);
     if (userCart) {
       await Cart.deleteCart(connection, userCart.id);
     }
 
     await connection.commit();
-    res.status(201).json({
+
+    return res.status(201).json({
       success: true,
       message: 'Đặt hàng thành công',
-      data: { order_id: orderId }
+      data: {
+        order_id: orderId,
+        total_price: finalTotalPrice
+      }
     });
+
   } catch (error) {
     await connection.rollback();
     console.error("Lỗi createOrder:", error);
-    res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({ 
+      success: false, 
+      message: 'Lỗi hệ thống khi tạo đơn hàng: ' + error.message 
+    });
   } finally {
     connection.release();
   }
 };
-
 exports.getMyOrders = async (req, res) => {
   try {
     const userId = req.user?.id;

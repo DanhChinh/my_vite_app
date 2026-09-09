@@ -97,6 +97,25 @@ const Cart = {
        WHERE ci.id = ? AND c.user_id = ?`,
       [cartItemId, userId]
     );
+  },
+  // 2. Xóa toàn bộ sản phẩm trong cart_items và xóa giỏ hàng (deleteCart)
+  async deleteCart(connection, cartId) {
+    if (!cartId) return false;
+
+    // Nếu DB có cài đặt ON DELETE CASCADE ở khóa ngoại cart_items,
+    // chỉ cần xóa bảng `carts` thì `cart_items` sẽ tự động bị xóa.
+    // Để an toàn tuyệt đối, ta tiến hành xóa cart_items trước:
+    await connection.query(
+      'DELETE FROM cart_items WHERE cart_id = ?',
+      [cartId]
+    );
+
+    const [result] = await connection.query(
+      'DELETE FROM carts WHERE id = ?',
+      [cartId]
+    );
+
+    return result.affectedRows > 0;
   }
 };
 

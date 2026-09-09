@@ -1,14 +1,39 @@
 const pool = require('../config/database');
 
 const User = {
-  async findByLoginIdentifier(identifier) {
-    const [users] = await pool.query(
-      'SELECT * FROM users WHERE (username = ? OR email = ?) AND is_active = 1',
-      [identifier, identifier]
+async findById(userId) {
+    const [rows] = await pool.query(
+      `SELECT 
+          u.id,
+          u.username,
+          u.email,
+          u.phone,
+          u.role,
+          u.created_at,
+          c.full_name,
+          c.gender,
+          c.date_of_birth,
+          c.avatar_url
+       FROM users u
+       LEFT JOIN customers c ON u.id = c.user_id
+       WHERE u.id = ? AND u.is_active = 1`,
+      [userId]
     );
-    return users[0] || null;
+
+    return rows[0] || null;
   },
 
+  // 2. Dùng cho Đăng nhập (Chỉ truy vấn bảng users để kiểm tra password/token)
+  async findByLoginIdentifier(identifier) {
+    const [rows] = await pool.query(
+      `SELECT id, username, password, role, is_active 
+       FROM users 
+       WHERE (username = ? OR email = ? OR phone = ?) AND is_active = 1`,
+      [identifier, identifier, identifier]
+    );
+
+    return rows[0] || null;
+  },
   async checkExisting(username, email, phone) {
     const [existing] = await pool.query(
       `SELECT username, email, phone FROM users 

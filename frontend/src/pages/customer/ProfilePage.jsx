@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { useAuth } from '../../context/AuthContext';
-import { useToast } from '../../context/ToastProvider';
+import { useAuth } from '../../contexts/AuthContext';
+import { useToast } from '../../contexts/ToastProvider';
 
 export default function ProfilePage() {
   const { user } = useAuth();

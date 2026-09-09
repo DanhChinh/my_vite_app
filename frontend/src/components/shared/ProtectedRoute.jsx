@@ -1,7 +1,7 @@
 // src/components/ProtectedRoute.jsx
 import React, { useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
-import { useToast } from '../../context/ToastProvider';
+import { useToast } from '../../contexts/ToastProvider';
 
 export default function ProtectedRoute({ children, allowedRoles }) {
   const token = localStorage.getItem('token');
@@ -32,7 +32,7 @@ export default function ProtectedRoute({ children, allowedRoles }) {
 
 // import React from 'react';
 // import { Navigate, Outlet } from 'react-router-dom';
-// import { useAuth } from '../../context/AuthContext';
+// import { useAuth } from '../../contexts/AuthContext';
 
 // export default function ProtectedRoute({ allowedRoles }) {
 //   const { isAuthenticated, role, loading } = useAuth();

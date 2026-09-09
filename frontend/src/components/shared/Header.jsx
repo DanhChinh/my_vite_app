@@ -1,8 +1,8 @@
 export { default } from './Navbar';
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
-import { useCart } from '../../context/CartContext';
+import { useAuth } from '../../contexts/AuthContext';
+import { useCart } from '../../contexts/CartContext';
 
 export default function Header({ onOpenLogin }) {
   const { isAuthenticated, user, role, logout } = useAuth();
@@ -64,12 +64,12 @@ export default function Header({ onOpenLogin }) {
                   {role === 'customer' && (
                     <>
                       <li>
-                        <Link className="dropdown-item" to="/customer/profile">
+                        <Link className="dropdown-item" to="/profile">
                           <i className="fa-solid fa-id-card me-2"></i>Hồ sơ của tôi
                         </Link>
                       </li>
                       <li>
-                        <Link className="dropdown-item" to="/customer/orders">
+                        <Link className="dropdown-item" to="/orders">
                           <i className="fa-solid fa-box-archive me-2"></i>Đơn mua
                         </Link>
                       </li>
