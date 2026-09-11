@@ -123,6 +123,19 @@ export function CartProvider({ children }) {
     }
   };
 
+  const clearCart = async () => {
+    // if (isCustomer) {
+    //   await cartService.clearCart();
+    //   await fetchCart();
+    // } else {
+    //   clearGuestCart();
+    //   setCartItems([]);
+    // }
+
+    setCartItems([])
+    
+  }
+
   // 5. Gộp giỏ hàng Guest vào Server khi đăng nhập thành công
   const handleMergeCart = async () => {
     const localItems = getGuestCart();
@@ -136,6 +149,7 @@ export function CartProvider({ children }) {
       }
     }
   };
+  
 
   // Các giá trị tính toán (Calculated Values)
   const safeCartItems = Array.isArray(cartItems) ? cartItems : [];
@@ -158,6 +172,7 @@ export function CartProvider({ children }) {
         addToCart,
         updateQuantity,
         removeFromCart,
+        clearCart,
         mergeCart: handleMergeCart,
         refreshCart: fetchCart,
       }}

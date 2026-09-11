@@ -28,6 +28,19 @@ app.use((req, res, next) => {
   next(); // Cho phép request đi tiếp vào Controller
 });
 
+const errorHandler = require('./middlewares/errorHandler');
+const swaggerUi = require('swagger-ui-express');
+const YAML = require('yamljs');
+const swaggerDocument = YAML.load('./openapi.yaml');
+
+// Endpoint xem giao diện tài liệu OpenAPI/Swagger
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+
+app.listen(3000, () => {
+  console.log('Server running at http://localhost:3000');
+  console.log('API Specs available at http://localhost:3000/api-docs');
+});
+
 // server/server.js
 const authRoutes = require('./routes/authRoutes');
 const cartRoutes = require('./routes/cartRoutes');
@@ -36,15 +49,17 @@ const productRoutes = require('./routes/productRoutes');
 const addressRoutes = require('./routes/addressRoutes');
 
 // Ưu tiên các Route Public trước
-app.use('/api', productRoutes);  
-app.use('/api', authRoutes);         
-app.use('/api', cartRoutes);     
-app.use('/api', orderRoutes);   
-app.use('/api', addressRoutes);  // Thêm route địa chỉ 
+app.use('/api/auth', authRoutes);         
+app.use('/api/products', productRoutes);  
+app.use('/api/carts', cartRoutes);     
+app.use('/api/orders', orderRoutes);   
+app.use('/api/addresses', addressRoutes); 
 // Route kiểm tra server hoạt động
 app.get('/', (req, res) => {
   res.json({ success: true, message: 'TechStore Pro API đang hoạt động ổn định!' });
 });
+
+app.use(errorHandler);
 
 // Lắng nghe cổng từ biến môi trường hoặc mặc định là 5000
 const PORT = process.env.PORT || 5000;

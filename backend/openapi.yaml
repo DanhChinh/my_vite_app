@@ -1,0 +1,346 @@
+openapi: 3.0.3
+info:
+  title: Resource-Based E-Commerce REST API
+  description: Tài liệu API theo định hướng quản lý tài nguyên (Resource-Based Architecture).
+  version: 1.0.0
+
+servers:
+  - url: https://api.store.com/v1
+    description: Production Server
+
+paths:
+
+  # ==========================================
+  # RESOURCE 1: /products
+  # ==========================================
+  /products:
+    get:
+      summary: Lấy danh sách sản phẩm
+      description: Dành cho Guest/Customer/Staff/Admin. Hỗ trợ lọc, tìm kiếm và phân trang.
+      tags:
+        - Products
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 1
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 10
+        - in: query
+          name: search
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Lấy danh sách thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Product'
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+
+    post:
+      summary: Tạo sản phẩm mới
+      description: Yêu cầu quyền **Admin** hoặc **Staff**.
+      tags:
+        - Products
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductInput'
+      responses:
+        '201':
+          description: Tạo sản phẩm thành công
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+
+  /products/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: integer
+
+    get:
+      summary: Lấy chi tiết sản phẩm
+      tags:
+        - Products
+      responses:
+        '200':
+          description: Chi tiết sản phẩm
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+    put:
+      summary: Cập nhật sản phẩm
+      description: Yêu cầu quyền **Admin** hoặc **Staff**.
+      tags:
+        - Products
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductInput'
+      responses:
+        '200':
+          description: Cập nhật thành công
+
+    delete:
+      summary: Xóa sản phẩm
+      description: Yêu cầu quyền **Admin**.
+      tags:
+        - Products
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Xóa thành công
+
+  # ==========================================
+  # RESOURCE 2: /orders
+  # ==========================================
+  /orders:
+    get:
+      summary: Lấy danh sách đơn hàng
+      description: |
+        - **Customer**: Trả về các đơn hàng của chính tài khoản đó.
+        - **Staff/Admin**: Trả về toàn bộ đơn hàng trong hệ thống.
+      tags:
+        - Orders
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [pending, processing, completed, cancelled]
+      responses:
+        '200':
+          description: Lấy danh sách thành công
+
+    post:
+      summary: Tạo đơn hàng mới
+      description: Yêu cầu người dùng đăng nhập.
+      tags:
+        - Orders
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [items, shipping_address]
+              properties:
+                shipping_address:
+                  type: string
+                  example: "123 Đường Ba Tháng Hai, Quận 10, TP.HCM"
+                items:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      product_id:
+                        type: integer
+                      quantity:
+                        type: integer
+      responses:
+        '201':
+          description: Tạo đơn hàng thành công
+
+  /orders/{id}/status:
+    patch:
+      summary: Cập nhật trạng thái đơn hàng
+      description: Yêu cầu quyền **Staff** hoặc **Admin**.
+      tags:
+        - Orders
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [processing, completed, cancelled]
+                note:
+                  type: string
+      responses:
+        '200':
+          description: Cập nhật trạng thái thành công
+
+  # ==========================================
+  # RESOURCE 3: /users
+  # ==========================================
+  /users:
+    get:
+      summary: Quản lý tài khoản người dùng
+      description: Yêu cầu quyền **Admin**.
+      tags:
+        - Users
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Danh sách người dùng
+
+  /users/me:
+    get:
+      summary: Lấy hồ sơ người dùng hiện tại
+      description: Dành cho bất kỳ user nào đã đăng nhập.
+      tags:
+        - Users
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Thông tin cá nhân
+
+    put:
+      summary: Cập nhật thông tin cá nhân
+      tags:
+        - Users
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                full_name:
+                  type: string
+                phone:
+                  type: string
+      responses:
+        '200':
+          description: Cập nhật thành công
+
+# ==========================================
+# COMPONENTS & SCHEMAS
+# ==========================================
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Product:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: "iPhone 15 Pro Max"
+        price:
+          type: number
+          example: 29500000
+        stock:
+          type: integer
+          example: 10
+
+    ProductInput:
+      type: object
+      required: [name, price, stock]
+      properties:
+        name:
+          type: string
+          example: "iPhone 15 Pro Max"
+        price:
+          type: number
+          example: 29500000
+        stock:
+          type: integer
+          example: 10
+
+    PaginationMeta:
+      type: object
+      properties:
+        page:
+          type: integer
+          example: 1
+        limit:
+          type: integer
+          example: 10
+        total_items:
+          type: integer
+          example: 50
+        total_pages:
+          type: integer
+          example: 5
+
+    ErrorPayload:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              example: "FORBIDDEN"
+            message:
+              type: string
+              example: "Bạn không có quyền thực hiện hành động này"
+
+  responses:
+    UnauthorizedError:
+      description: Chưa đăng nhập hoặc Token hết hạn
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorPayload'
+    ForbiddenError:
+      description: Không có quyền truy cập
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorPayload'
+    NotFoundError:
+      description: Tài nguyên không tồn tại
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorPayload'

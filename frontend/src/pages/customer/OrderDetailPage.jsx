@@ -85,7 +85,7 @@ export default function OrderDetailPage() {
   const totalPrice = Number(order.total_amount || order.total_price || order.total || 0);
   const recipientName = order.customer_name || order.recipient_name || order.receiver_name || 'Khách hàng';
   const recipientPhone = order.customer_phone || order.phone || order.recipient_phone || 'N/A';
-  const shippingAddress = order.shipping_address || order.address || 'N/A';
+  const recipientAddress = order.recipient_address || order.address || 'N/A';
 
   return (
     <div className="container my-5">
@@ -156,7 +156,7 @@ export default function OrderDetailPage() {
             <h5 className="fw-bold mb-3 text-primary">Thông tin nhận hàng</h5>
             <p className="mb-2"><strong>Người nhận:</strong> {recipientName}</p>
             <p className="mb-2"><strong>Số điện thoại:</strong> {recipientPhone}</p>
-            <p className="mb-2"><strong>Địa chỉ:</strong> {shippingAddress}</p>
+            <p className="mb-2"><strong>Địa chỉ:</strong> {recipientAddress}</p>
             {order.note && <p className="mb-2"><strong>Ghi chú:</strong> {order.note}</p>}
             <hr />
             <p className="mb-2">

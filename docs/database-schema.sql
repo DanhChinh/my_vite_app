@@ -348,35 +348,26 @@ COLLATE=utf8mb4_unicode_ci;
 -- =========================================================
 -- 10. ORDERS
 -- =========================================================
-
 CREATE TABLE IF NOT EXISTS orders (
     id INT PRIMARY KEY AUTO_INCREMENT,
-
     user_id INT NOT NULL,
 
-    /*
-       Snapshot địa chỉ tại thời điểm đặt hàng.
-       Không phụ thuộc customer_addresses.
+    /* 
+       Snapshot thông tin người nhận tại thời điểm đặt hàng. 
+       Tránh bị ảnh hưởng nếu người dùng thay đổi profile sau này.
     */
-    shipping_address TEXT NOT NULL,
+    recipient_name VARCHAR(255) NOT NULL,
+    recipient_phone VARCHAR(20) NOT NULL,
+    recipient_address TEXT NOT NULL,
 
-    payment_method VARCHAR(32)
-        NOT NULL DEFAULT 'cod',
-
+    payment_method VARCHAR(32) NOT NULL DEFAULT 'cod',
     note TEXT,
-
     internal_note TEXT,
-
-    status VARCHAR(32)
-        NOT NULL DEFAULT 'pending',
-
-    total_price DECIMAL(12, 2)
-        NOT NULL DEFAULT 0.00,
+    status VARCHAR(32) NOT NULL DEFAULT 'pending',
+    total_price DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
 
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-        ON UPDATE CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
     CONSTRAINT fk_orders_user
         FOREIGN KEY (user_id)
@@ -390,7 +381,6 @@ CREATE TABLE IF NOT EXISTS orders (
 
     INDEX idx_orders_created_at
         (created_at)
-
 ) ENGINE=InnoDB
 DEFAULT CHARSET=utf8mb4
 COLLATE=utf8mb4_unicode_ci;

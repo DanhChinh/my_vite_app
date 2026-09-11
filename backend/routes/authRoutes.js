@@ -1,12 +1,9 @@
-// routes/authRoutes.js
 const express = require('express');
 const router = express.Router();
-const authController = require('../controllers/authController'); 
-const {verifyToken} = require('../middlewares/authMiddleware');
-router.post('/login', authController.login);
-router.post('/register', authController.register);
-// router.post('/forgot-password', authController.forgotPassword);
-// router.post('/reset-password', authController.resetPassword);
-router.get('/profile',verifyToken ,authController.getProfile);
+const authController = require('../controllers/authController');
+const { validate, registerSchema, loginSchema } = require('../middlewares/validateMiddleware');
+
+router.post('/login', validate(loginSchema), authController.login);
+router.post('/register', validate(registerSchema), authController.register);
 
 module.exports = router;

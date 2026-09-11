@@ -4,12 +4,12 @@ const pool = require('../config/database');
 const Order = {
   // Tạo đơn hàng mới & snapshot thông tin chi tiết
   async createOrder(connection, orderData, items) {
-    const { userId, shippingAddress, paymentMethod, note, totalPrice } = orderData;
+    const { userId, recipient_name, recipient_phone, recipient_address, paymentMethod, note, totalPrice } = orderData;
 
     const [orderResult] = await connection.query(
-      `INSERT INTO orders (user_id, shipping_address, payment_method, note, status, total_price)
-       VALUES (?, ?, ?, ?, 'pending', ?)`,
-      [userId, shippingAddress, paymentMethod, note, totalPrice]
+      `INSERT INTO orders (user_id, recipient_name, recipient_phone, recipient_address, payment_method, note, status, total_price)
+       VALUES (?, ?, ?, ?, ?, ?, 'pending', ?)`,
+      [userId, recipient_name, recipient_phone, recipient_address, paymentMethod, note, totalPrice]
     );
     const orderId = orderResult.insertId;
 
@@ -48,7 +48,7 @@ const Order = {
   // Lấy lịch sử đơn hàng của cá nhân Khách hàng
   async getOrdersByUser(userId) {
     const [orders] = await pool.query(
-      `SELECT id, payment_method, status, total_price, created_at
+      `SELECT id, recipient_name, recipient_phone, recipient_address, status, total_price, created_at
        FROM orders 
        WHERE user_id = ? 
        ORDER BY created_at DESC`,
@@ -60,7 +60,7 @@ const Order = {
   // Lấy chi tiết đơn hàng dành riêng cho Khách hàng
   async getOrderDetailsForCustomer(userId, orderId) {
     const [orders] = await pool.query(
-      `SELECT id, shipping_address, payment_method, note, status, total_price, created_at
+      `SELECT id, recipient_name, recipient_phone, recipient_address, payment_method, note, status, total_price, created_at
        FROM orders 
        WHERE id = ? AND user_id = ?`,
       [orderId, userId]

@@ -1,0 +1,2 @@
+kiem tra token da het han hay chua Middleware
+//await bcrypt.compare(password, user.password);

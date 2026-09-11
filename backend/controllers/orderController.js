@@ -23,12 +23,9 @@ exports.createOrder = async (req, res) => {
         message: 'Thiếu thông tin giao hàng hoặc phương thức thanh toán' 
       });
     }
-
-    const shippingAddress = [
-      customer_info.full_name,
-      customer_info.phone,
-      customer_info.address
-    ].filter(Boolean).join(' | ');
+    const recipient_name = customer_info.full_name || 'Khách hàng';
+    const recipient_phone = customer_info.phone || 'Chưa cung cấp';
+    const recipient_address = customer_info.address || 'Chưa cung cấp';
 
     const orderNote = customer_info.note || '';
 
@@ -103,7 +100,9 @@ exports.createOrder = async (req, res) => {
       connection,
       {
         userId,
-        shippingAddress,
+        recipient_name,
+        recipient_phone,
+        recipient_address,
         paymentMethod: payment_method.toLowerCase(),
         note: orderNote,
         totalPrice: finalTotalPrice

@@ -1,19 +1,23 @@
-// routes/orderRoutes.js
 const express = require('express');
 const router = express.Router();
 const orderController = require('../controllers/orderController');
 const { verifyToken } = require('../middlewares/authMiddleware');
+// Nếu có validate middleware cho đơn hàng, import tại đây:
+// const { validate, createOrderSchema } = require('../middlewares/validateMiddleware');
 
-// router.use(verifyToken);
+// Tự động xác thực JWT cho tất cả các endpoint thuộc Order
+router.use(verifyToken);
 
-router.post('/orders', verifyToken, orderController.createOrder);
-router.get('/orders', verifyToken, orderController.getMyOrders);
-router.get('/orders/:id', verifyToken, orderController.getMyOrderDetails);
-router.put('/orders/:id/cancel', verifyToken, orderController.cancelOrder);
+// [POST] /api/orders     - Tạo đơn hàng mới
+// [GET]  /api/orders     - Lấy danh sách đơn hàng của người dùng
+router.route('/')
+  .post(orderController.createOrder)
+  .get(orderController.getMyOrders);
 
-// Các route dành riêng cho Admin/Staff (Cần thêm middleware kiểm tra quyền admin/staff)
-// router.get('/admin/orders', verifyAdminOrStaff, orderController.getAllOrdersForAdmin);
-// router.get('/admin/orders/:id', verifyAdminOrStaff, orderController.getOrderDetailsForAdmin);
-// router.put('/admin/orders/:id/status', verifyAdminOrStaff, orderController.updateOrderStatus);
+// [GET] /api/orders/:id  - Xem chi tiết đơn hàng
+router.get('/:id', orderController.getMyOrderDetails);
+
+// [PUT] /api/orders/:id/cancel - Hủy đơn hàng
+router.put('/:id/cancel', orderController.cancelOrder);
 
 module.exports = router;
